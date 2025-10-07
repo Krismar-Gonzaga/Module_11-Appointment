@@ -9,7 +9,7 @@ class AppointmentScheduleBlockSerializer(serializers.ModelSerializer):
 class AppointmentSchreduleEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = AppointmentSchreduleEntry
-        fields = ["id", "entry_name", "start_time", "end_time", "day_of_week"]
+        fields = ["id", "start_time", "end_time", "day_of_week"]
 
 class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:

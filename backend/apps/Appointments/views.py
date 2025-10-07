@@ -32,11 +32,9 @@ class PlottingScheduleAPIView(generics.CreateAPIView):
         for slot in time_slots:
             entry = AppointmentSchreduleEntry.objects.create(
                 schedule_block_entry=block,
-                entry_name=f"{slot['start']} - {slot['end']}",
                 start_time=slot["start"],
                 end_time=slot["end"],
                 day_of_week=slot["day"],
-                is_available=True
             )
             entries.append(AppointmentSchreduleEntrySerializer(entry).data)
 
