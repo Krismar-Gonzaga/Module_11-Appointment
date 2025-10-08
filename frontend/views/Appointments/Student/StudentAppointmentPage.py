@@ -219,6 +219,7 @@ class StudentAppointmentPage_ui(QWidget):
                     "image_path": appointment_data[8],
                 })
                 if result:
+                    print(f"Result: {result}")
                     self.load_appointments_data()
                     QMessageBox.information(self, "Success", "Appointment canceled successfully!")
                     return True
