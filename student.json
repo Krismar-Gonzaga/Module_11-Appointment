@@ -82,5 +82,12 @@
         "email": "badong@student.edu",
         "course": "BSIT",
         "year_level": 3
+    },
+    {
+        "id": 13,
+        "name": "John Doe",
+        "email": "Adolf",
+        "course": "Computer Science",
+        "year_level": "3rd Year"
     }
 ]

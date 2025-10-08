@@ -171,43 +171,43 @@ class appointment_crud:
 if __name__ == "__main__":
     appointment_crud = appointment_crud()
     
-    # --- Create sample faculty and student ---
-    faculty = appointment_crud.create_faculty("Prof. Reyes", "reyes@school.edu", "IT Department")
-    student = appointment_crud.create_student("Alice Santos", "alice@student.edu", "BSIT", 3)
-    student1 = appointment_crud.create_student("Badong Lee", "badong@student.edu", "BSIT", 3)
+    # # --- Create sample faculty and student ---
+    # faculty = appointment_crud.create_faculty("Prof. Reyes", "reyes@school.edu", "IT Department")
+    # student = appointment_crud.create_student("Alice Santos", "alice@student.edu", "BSIT", 3)
+    # student1 = appointment_crud.create_student("Badong Lee", "badong@student.edu", "BSIT", 3)
 
-    print("All Faculty: \n", appointment_crud.list_faculty())
-    print("All Student: \n", appointment_crud.list_students())
+    # print("All Faculty: \n", appointment_crud.list_faculty())
+    # print("All Student: \n", appointment_crud.list_students())
 
-    # --- Faculty plots a schedule ---
-    result = appointment_crud.plot_schedule(
-        faculty_id=faculty["id"],
-        time_slots=[
-            {"start": "09:00", "end": "10:00", "day": 1},
-            {"start": "10:00", "end": "11:00", "day": 1}
-        ]
-    )
-    print("\nSchedule plotted:", result)
+    # # --- Faculty plots a schedule ---
+    # result = appointment_crud.plot_schedule(
+    #     faculty_id=faculty["id"],
+    #     time_slots=[
+    #         {"start": "09:00", "end": "10:00", "day": 1},
+    #         {"start": "10:00", "end": "11:00", "day": 1}
+    #     ]
+    # )
+    # print("\nSchedule plotted:", result)
 
-    # --- Student books an appointment ---
-    new_appointment = appointment_crud.create_appointment(
-        student_id=student["id"],
-        schedule_entry_id=result["entries"][0]["id"],
-        details="Consultation about project",
-        address="Room 305",
-        date_str="2025-10-08",
-        image_path="Uploads/consultation.png"
-    )
-    print("\nNew Appointment Created:", new_appointment)
+    # # --- Student books an appointment ---
+    # new_appointment = appointment_crud.create_appointment(
+    #     student_id=student["id"],
+    #     schedule_entry_id=result["entries"][0]["id"],
+    #     details="Consultation about project",
+    #     address="Room 305",
+    #     date_str="2025-10-08",
+    #     image_path="Uploads/consultation.png"
+    # )
+    # print("\nNew Appointment Created:", new_appointment)
 
-    # --- Faculty views their appointments ---
-    faculty_appts = appointment_crud.get_faculty_appointments(faculty["id"])
+    # # --- Faculty views their appointments ---
+    faculty_appts = appointment_crud.get_faculty_appointments(1)
     print("\nFaculty Appointments:", faculty_appts)
 
-    # --- Student views their appointments ---
-    student_appts = appointment_crud.get_student_appointments(student["id"])
-    print("\nStudent Appointments:", student_appts)
+    # # --- Student views their appointments ---
+    # student_appts = appointment_crud.get_student_appointments(student["id"])
+    # print("\nStudent Appointments:", student_appts)
 
-    # --- Update appointment status ---
-    updated = appointment_crud.update_appointment(new_appointment["id"], {"status": "approved"})
-    print("\nUpdated Appointment:", updated)
+    # # --- Update appointment status ---
+    # updated = appointment_crud.update_appointment(new_appointment["id"], {"status": "approved"})
+    # print("\nUpdated Appointment:", updated)

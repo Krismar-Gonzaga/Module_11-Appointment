@@ -1,11 +1,11 @@
 [
     {
         "faculty_id": 1,
-        "is_available": true,
+        "is_available": false,
         "id": 1
     },
     {
-        "faculty_id": 2,
+        "faculty_id": 1,
         "is_available": true,
         "id": 2
     }

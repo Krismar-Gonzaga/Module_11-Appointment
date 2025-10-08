@@ -18,7 +18,7 @@ class StudentAppointmentPage_ui(QWidget):
 
         self._setupAppointmentsPage()
         self.retranslateUi()
-        self.create_sample_data()  # Create sample data for testing
+        # self.create_sample_data()  # Create sample data for testing ("Ge comment nako kay mag sig duplicate sa data")
         self.load_appointments_data()  # Load initial data
 
     def load_appointments_data(self):

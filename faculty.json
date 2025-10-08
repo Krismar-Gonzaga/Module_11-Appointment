@@ -4,29 +4,5 @@
         "name": "Kim",
         "email": "Kim@school.edu",
         "department": "IT Department"
-    },
-    {
-        "id": 2,
-        "name": "Kim",
-        "email": "Kim@school.edu",
-        "department": "IT Department"
-    },
-    {
-        "id": 3,
-        "name": "Kim",
-        "email": "Kim@school.edu",
-        "department": "IT Department"
-    },
-    {
-        "id": 4,
-        "name": "Kim",
-        "email": "Kim@school.edu",
-        "department": "IT Department"
-    },
-    {
-        "id": 5,
-        "name": "Kim",
-        "email": "Kim@school.edu",
-        "department": "IT Department"
     }
 ]
