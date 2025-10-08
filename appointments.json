@@ -40,7 +40,7 @@
         "appointment_schedule_entry_id": 3,
         "additional_details": "For my midterm requirements",
         "address": "Faculty Office",
-        "status": "canceled",
+        "status": "approved",
         "appointment_date": "2025-10-13",
         "created_at": "2025-10-08 19:31:25.915899",
         "updated_at": "2025-10-08 19:43:08.524417",

@@ -663,6 +663,7 @@ class StudentAppointmentPage_ui(QWidget):
             "CANCELED": "#EB5757",
             "APPROVED": "#219653",
             "DENIED": "#EB5757",
+            "COMPLETED": "#219653"
         }
 
         self.tableWidget_8.setRowCount(len(self.rows))
