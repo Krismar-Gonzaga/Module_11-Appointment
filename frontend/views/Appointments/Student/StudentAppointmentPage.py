@@ -95,7 +95,13 @@ class StudentAppointmentPage_ui(QWidget):
                     time_slot,
                     appointment.get('additional_details', 'No details'),
                     appointment.get('status', 'pending').upper(),
-                    appointment.get('id')  # Store appointment ID
+                    appointment.get('id'),  # Store appointment ID
+                    appointment.get('student_id'),
+                    schedule_entry_id,
+                    appointment.get('address'),
+                    appointment_date,
+                    appointment.get('created_at'),
+                    appointment.get('image_path'),
                 ]
                 self.rows.append(row_data)
 
@@ -193,13 +199,20 @@ class StudentAppointmentPage_ui(QWidget):
                 return student.get('id')
         return None
 
-    def cancel_appointment(self, appointment_id):
+    def cancel_appointment(self, appointment_data):
         """Cancel an appointment"""
         try:
-            if appointment_id:
-                result = self.Appointment_crud.update_appointment(appointment_id, {
+            if appointment_data:
+                result = self.Appointment_crud.update_appointment(appointment_data[2], {
+                    "student_id": appointment_data[3],
+                    "appointment_schedule_entry_id": appointment_data[4],
+                    "additional_details": appointment_data[0],
+                    "address": appointment_data[5],
                     "status": "canceled",
-                    "updated_at": str(datetime.now())
+                    "appointment_date": appointment_data[6],
+                    "created_at": appointment_data[7],
+                    "updated_at": str(datetime.now()),
+                    "image_path": appointment_data[8],
                 })
                 if result:
                     self.load_appointments_data()
@@ -477,7 +490,7 @@ class StudentAppointmentPage_ui(QWidget):
 
         selected_row = self.tableWidget_8.currentRow()
         if selected_row >= 0 and selected_row < len(self.rows):
-            time_text, faculty, slot, _, status, appointment_id = self.rows[selected_row]
+            time_text, faculty, slot, _, status, appointment_id, student_id, schedule_entry, address, appointment_date, created_at, image_path = self.rows[selected_row]
             appointment = self.Appointment_crud.appointments_db.read_by_id(appointment_id)
             appointment_data = [
                 ("Student:", self.username),
@@ -581,7 +594,7 @@ class StudentAppointmentPage_ui(QWidget):
     def _openCancelDialog(self, row_index):
         """Open confirmation dialog for canceling an appointment"""
         if 0 <= row_index < len(self.rows):
-            appointment_id = self.rows[row_index][5]
+            appointment_data = self.rows[row_index][3:]
             dlg = QtWidgets.QDialog(self)
             dlg.setWindowTitle("Cancel Appointment")
             dlg.setModal(True)
@@ -626,7 +639,7 @@ class StudentAppointmentPage_ui(QWidget):
                 }
             """)
             btn_cancel.clicked.connect(dlg.reject)
-            btn_confirm.clicked.connect(lambda: self._handleCancelAppointment(dlg, appointment_id))
+            btn_confirm.clicked.connect(lambda: self._handleCancelAppointment(dlg, appointment_data))
             btn_layout.addWidget(btn_cancel)
             btn_layout.addStretch(1)
             btn_layout.addWidget(btn_confirm)
@@ -634,9 +647,9 @@ class StudentAppointmentPage_ui(QWidget):
 
             dlg.exec()
 
-    def _handleCancelAppointment(self, dialog, appointment_id):
+    def _handleCancelAppointment(self, dialog, appointment_data):
         """Handle appointment cancellation"""
-        if self.cancel_appointment(appointment_id):
+        if self.cancel_appointment(appointment_data):
             dialog.accept()
         else:
             dialog.reject()
@@ -652,7 +665,7 @@ class StudentAppointmentPage_ui(QWidget):
         }
 
         self.tableWidget_8.setRowCount(len(self.rows))
-        for r, (time_text, faculty, slot, purpose, status, appointment_id) in enumerate(self.rows):
+        for r, (time_text, faculty, slot, purpose, status, appointment_id, student_id, schedule_entry, address, appointment_date, created_at, image_path) in enumerate(self.rows):
             self.tableWidget_8.setItem(r, 0, QtWidgets.QTableWidgetItem(time_text))
             self.tableWidget_8.setItem(r, 1, QtWidgets.QTableWidgetItem(faculty))
             self.tableWidget_8.setItem(r, 2, QtWidgets.QTableWidgetItem(slot))
