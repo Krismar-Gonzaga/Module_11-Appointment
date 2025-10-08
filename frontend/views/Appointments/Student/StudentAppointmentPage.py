@@ -2,11 +2,13 @@ from datetime import datetime
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMessageBox
 from .appointment_crud import appointment_crud
+from .StudentRequestPage import StudentRequestPage_ui
 
 class StudentAppointmentPage_ui(QWidget):
     go_to_AppointmentSchedulerPage = QtCore.pyqtSignal()
     appointment_created = QtCore.pyqtSignal()  # Signal to indicate new appointment
-
+    refresh_data = QtCore.pyqtSignal()  # Signal to refresh data
+    
     def __init__(self, username, roles, primary_role, token, parent=None):
         super().__init__(parent)
         self.username = username
@@ -15,14 +17,21 @@ class StudentAppointmentPage_ui(QWidget):
         self.token = token
         self.Appointment_crud = appointment_crud()
         self.rows = []
-
+        self.student_request_page = None
+        self.setFixedSize(1000, 550)
         self._setupAppointmentsPage()
         self.retranslateUi()
-        # self.create_sample_data()  # Create sample data for testing ("Ge comment nako kay mag sig duplicate sa data")
         self.load_appointments_data()  # Load initial data
+
+    def set_student_request_page(self, request_page):
+        """Set the student request page and connect signals"""
+        self.student_request_page = request_page
+        # Connect the refresh signal from request page
+        self.student_request_page.backrefreshdata.connect(self.refresh_appointments_data)
 
     def load_appointments_data(self):
         """Load appointments data from JSON database for the current student"""
+        self.rows.clear()
         try:
             # Get student ID based on username/email
             students = self.Appointment_crud.list_students()
@@ -112,11 +121,6 @@ class StudentAppointmentPage_ui(QWidget):
             print(f"Error loading appointments data: {e}")
             QMessageBox.warning(self, "Error", f"Failed to load appointments: {str(e)}")
             # Fallback to sample data
-            self.rows = [
-                ["2025-08-21 09:00", "Dr. Smith", "Monday 09:00 - 09:30", "Project Consultation", "PENDING", 1],
-                ["2025-08-22 10:00", "Prof. Johnson", "Tuesday 10:00 - 10:30", "Thesis Discussion", "APPROVED", 2],
-                ["2025-08-23 11:00", "Dr. Brown", "Wednesday 11:00 - 11:30", "Grade Inquiry", "CANCELED", 3],
-            ]
             self._populateAppointmentsTable()
 
     def create_sample_data(self):
@@ -264,7 +268,7 @@ class StudentAppointmentPage_ui(QWidget):
                 background-color: #0a5a2f;
             }
         """)
-        self.browseFacultyButton.clicked.connect(self.go_to_AppointmentSchedulerPage.emit)
+        self.browseFacultyButton.clicked.connect(self._handleBrowseFaculty)
         header_layout.addWidget(self.browseFacultyButton)
 
         appointments_layout.addWidget(header_widget)
@@ -361,6 +365,10 @@ class StudentAppointmentPage_ui(QWidget):
 
         widget_layout.addWidget(self.tableWidget_8, 1)
         appointments_layout.addWidget(self.widget_27, 1)
+
+    def _handleBrowseFaculty(self):
+        """Handle browse faculty button click - emit signal for main window"""
+        self.go_to_AppointmentSchedulerPage.emit()
 
     def _makeStatusItem(self, text, color_hex):
         """Create a styled status table item"""
@@ -686,9 +694,18 @@ class StudentAppointmentPage_ui(QWidget):
             if item is not None:
                 item.setText(header)
 
-    def refresh_data(self):
-        """Refresh the appointments data"""
+    def refresh_appointments_data(self):
+        """Refresh the appointments data - called when returning from request page"""
+        print("Refreshing appointments data...")
         self.load_appointments_data()
+        QMessageBox.information(self, "Success", "Appointments data refreshed!")
+
+    def showEvent(self, event):
+        """Override showEvent to refresh data when the page is shown"""
+        super().showEvent(event)
+        # Refresh data when page becomes visible
+        self.load_appointments_data()
+        
 
 if __name__ == "__main__":
     import sys

@@ -1,37 +1,44 @@
 [
-    {
-        "schedule_block_entry_id": 1,
-        "start_time": "09:00",
-        "end_time": "10:00",
-        "day_of_week": "Monday",
-        "id": 1
-    },
-    {
-        "schedule_block_entry_id": 1,
-        "start_time": "10:00",
-        "end_time": "11:00",
-        "day_of_week": "Monday",
-        "id": 2
-    },
-    {
-        "schedule_block_entry_id": 2,
-        "start_time": "09:00",
-        "end_time": "09:30",
-        "day_of_week": "Monday",
-        "id": 3
-    },
-    {
-        "schedule_block_entry_id": 2,
-        "start_time": "10:00",
-        "end_time": "10:30",
-        "day_of_week": "Tuesday",
-        "id": 4
-    },
-    {
-        "schedule_block_entry_id": 2,
-        "start_time": "11:00",
-        "end_time": "11:30",
-        "day_of_week": "Wednesday",
-        "id": 5
-    }
+  {
+    "id": 1,
+    "schedule_block_entry_id": 1,
+    "start_time": "09:00",
+    "end_time": "10:00",
+    "day_of_week": "Wednesday"
+  },
+  {
+    "id": 2,
+    "schedule_block_entry_id": 1,
+    "start_time": "10:00",
+    "end_time": "11:00",
+    "day_of_week": "Wednesday"
+  },
+  {
+    "id": 3,
+    "schedule_block_entry_id": 2,
+    "start_time": "09:00",
+    "end_time": "10:00",
+    "day_of_week": "Wednesday"
+  },
+  {
+    "id": 4,
+    "schedule_block_entry_id": 2,
+    "start_time": "10:00",
+    "end_time": "11:00",
+    "day_of_week": "Wednesday"
+  },
+  {
+    "schedule_block_entry_id": 3,
+    "start_time": "09:00",
+    "end_time": "10:00",
+    "day_of_week": "Monday",
+    "id": 5
+  },
+  {
+    "schedule_block_entry_id": 3,
+    "start_time": "10:00",
+    "end_time": "11:00",
+    "day_of_week": "Monday",
+    "id": 6
+  }
 ]

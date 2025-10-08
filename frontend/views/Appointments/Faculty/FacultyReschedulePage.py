@@ -21,6 +21,7 @@ class FacultyReschedulePage_ui(QWidget):
         self._setupFacultyReschedulePage()
         self.retranslateUi()
         self._load_appointment_details()
+        self.setFixedSize(1000, 550)
 
     def _get_faculty_id(self):
         faculty_list = self.crud.list_faculty()

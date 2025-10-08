@@ -14,7 +14,7 @@ class AdminAppointmentPage_ui(QWidget):
         self.rows = []  # Store appointment data
         self._setupAppointmentsPage()
         self._populateAppointmentsTable()  # Load initial data
-
+        self.setFixedSize(1000, 550)
         # Set expanding size policy for the entire page
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding, 

@@ -18,7 +18,7 @@ class StudentBrowseFaculty_ui(QWidget):
         self.current_page = 0
         self.items_per_page = 6
         self.faculties = []
-        
+        self.setFixedSize(1000, 550)
         self._setupBrowseFacultyPage()
         self.load_faculties_data()
        

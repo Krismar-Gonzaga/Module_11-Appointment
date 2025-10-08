@@ -30,6 +30,7 @@ class AppointmentSchedulerPage_ui(QWidget):
         logging.debug(f"Initialized AppointmentSchedulerPage_ui with username: {self.username}, faculty_id: {self.faculty_id}")
         self._setupAppointmentSchedulerPage()
         self.retranslateUi()
+        self.setFixedSize(1000, 550)
 
     def _get_faculty_id(self):
         faculty_list = self.crud.list_faculty()
@@ -59,10 +60,47 @@ class AppointmentSchedulerPage_ui(QWidget):
         header_layout.addWidget(self.Academics_5)
         header_layout.addStretch(1)
 
-        self.backButton_7 = QtWidgets.QPushButton()
+        self.delete_3 = QtWidgets.QPushButton()
+        self.delete_3.setFixedSize(80, 30)
+        self.delete_3.setStyleSheet("""
+            QPushButton { background-color: #EB5757; color: white; border-radius: 4px; font: 10pt 'Poppins'; }
+            QPushButton:hover { background-color: #d43f3f; }
+        """)
+        self.delete_3.clicked.connect(self._deleteSelectedSlots)
+        header_layout.addWidget(self.delete_3)
+
+        self.createschedule_2 = QtWidgets.QPushButton()
+        self.createschedule_2.setFixedSize(120, 30)
+        self.createschedule_2.setStyleSheet("""
+            QPushButton { background-color: #084924; color: white; border-radius: 8px; font: 10pt 'Poppins'; }
+            QPushButton:hover { background-color: #0a5a2f; }
+        """)
+        self.createschedule_2.clicked.connect(self.go_to_EditSchedulePage.emit)
+        header_layout.addWidget(self.createschedule_2)
+
+        self.comboBox_2 = QtWidgets.QComboBox()
+        self.comboBox_2.setFixedSize(200, 30)
+        self.comboBox_2.setStyleSheet("""
+            QComboBox { border: 2px solid #064420; border-radius: 6px; padding: 4px 8px; font: 10pt 'Poppins'; color: #064420; background: white; }
+        """)
+        self.comboBox_2.addItems(["1st Semester 2025 - 2026", "2nd Semester 2025 - 2026", "Summer 2026"])
+        self.comboBox_2.currentTextChanged.connect(self._populateWeeklySchedule)
+        header_layout.addWidget(self.comboBox_2)
+
+        # Date selection controls
+        self.dateEdit = QDateEdit()
+        self.dateEdit.setCalendarPopup(True)
+        self.dateEdit.setDisplayFormat("yyyy-MM-dd")
+        self.dateEdit.setDate(QtCore.QDate.currentDate())
+        self.dateEdit.setStyleSheet("""
+            QDateEdit { border: 2px solid #064420; border-radius: 6px; padding: 4px 8px; font: 10pt 'Poppins'; color: #064420; background: white; }
+        """)
+        self.dateEdit.dateChanged.connect(self._updateWeek)
+        header_layout.addWidget(self.dateEdit)
+
+        self.backButton_7 = QtWidgets.QPushButton("<- Back")
         self.backButton_7.setFixedSize(40, 40)
         self.backButton_7.setStyleSheet("border: none; background: transparent;")
-        self.backButton_7.setIcon(QtGui.QIcon(":/assets/back_button.png"))
         self.backButton_7.setIconSize(QtCore.QSize(40, 40))
         self.backButton_7.clicked.connect(self.back.emit)
         header_layout.addWidget(self.backButton_7)
@@ -85,43 +123,11 @@ class AppointmentSchedulerPage_ui(QWidget):
         controls_layout.addWidget(self.label_92)
         controls_layout.addStretch(1)
 
-        self.delete_3 = QtWidgets.QPushButton()
-        self.delete_3.setFixedSize(80, 30)
-        self.delete_3.setStyleSheet("""
-            QPushButton { background-color: #EB5757; color: white; border-radius: 4px; font: 10pt 'Poppins'; }
-            QPushButton:hover { background-color: #d43f3f; }
-        """)
-        self.delete_3.clicked.connect(self._deleteSelectedSlots)
-        controls_layout.addWidget(self.delete_3)
+        
 
-        self.createschedule_2 = QtWidgets.QPushButton()
-        self.createschedule_2.setFixedSize(120, 30)
-        self.createschedule_2.setStyleSheet("""
-            QPushButton { background-color: #084924; color: white; border-radius: 8px; font: 10pt 'Poppins'; }
-            QPushButton:hover { background-color: #0a5a2f; }
-        """)
-        self.createschedule_2.clicked.connect(self.go_to_EditSchedulePage.emit)
-        controls_layout.addWidget(self.createschedule_2)
+        
 
-        self.comboBox_2 = QtWidgets.QComboBox()
-        self.comboBox_2.setFixedSize(200, 30)
-        self.comboBox_2.setStyleSheet("""
-            QComboBox { border: 2px solid #064420; border-radius: 6px; padding: 4px 8px; font: 10pt 'Poppins'; color: #064420; background: white; }
-        """)
-        self.comboBox_2.addItems(["1st Semester 2025 - 2026", "2nd Semester 2025 - 2026", "Summer 2026"])
-        self.comboBox_2.currentTextChanged.connect(self._populateWeeklySchedule)
-        controls_layout.addWidget(self.comboBox_2)
-
-        # Date selection controls
-        self.dateEdit = QDateEdit()
-        self.dateEdit.setCalendarPopup(True)
-        self.dateEdit.setDisplayFormat("yyyy-MM-dd")
-        self.dateEdit.setDate(QtCore.QDate.currentDate())
-        self.dateEdit.setStyleSheet("""
-            QDateEdit { border: 2px solid #064420; border-radius: 6px; padding: 4px 8px; font: 10pt 'Poppins'; color: #064420; background: white; }
-        """)
-        self.dateEdit.dateChanged.connect(self._updateWeek)
-        controls_layout.addWidget(self.dateEdit)
+        
 
         self.prevWeekButton = QPushButton("Previous Week")
         self.prevWeekButton.setFixedSize(100, 30)

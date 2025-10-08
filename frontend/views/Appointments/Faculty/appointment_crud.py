@@ -1,5 +1,9 @@
 from datetime import datetime
 from .crud import JSONCRUD 
+import logging
+
+# Set up logging for debugging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class appointment_crud:
     def __init__(self):
@@ -14,9 +18,7 @@ class appointment_crud:
     # ===========================
     def create_faculty(self, name, email, department):
         """Add a new faculty member."""
-        faculty_num = len(self.list_faculty())
         return self.faculty_db.create({
-            "id": faculty_num + 1,
             "name": name,
             "email": email,
             "department": department
@@ -26,14 +28,20 @@ class appointment_crud:
         """Return all faculty records."""
         return self.faculty_db.read_all()
 
+    def get_faculty_by_username(self, username):
+        """Retrieve a faculty member by username (or email)."""
+        return next((f for f in self.list_faculty() if f["email"] == username or f["name"] == username), None)
+
+    def get_faculty_by_id(self, faculty_id):
+        """Retrieve a faculty member by ID."""
+        return next((f for f in self.list_faculty() if f["id"] == faculty_id), None)
+
     # ===========================
     # STUDENT MANAGEMENT
     # ===========================
     def create_student(self, name, email, course, year_level):
         """Add a new student."""
-        student_num = len(self.list_students())
         return self.student_db.create({
-            "id": student_num + 1,
             "name": name,
             "email": email,
             "course": course,
@@ -43,6 +51,10 @@ class appointment_crud:
     def list_students(self):
         """Return all student records."""
         return self.student_db.read_all()
+
+    def get_student_by_id(self, student_id):
+        """Retrieve a student by ID."""
+        return next((s for s in self.list_students() if s["id"] == student_id), None)
 
     # ===========================
     # SCHEDULE BLOCK AND ENTRIES
@@ -108,7 +120,7 @@ class appointment_crud:
         appointments = self.appointments_db.read_all()
         return [
             a for a in appointments
-            if "appointment_schedule_entry_id" in a and a["appointment_schedule_entry_id"] == schedule_entry_id
+            if a["appointment_schedule_entry_id"] == schedule_entry_id
             and a["appointment_date"] == date_str
         ]
 
@@ -124,37 +136,28 @@ class appointment_crud:
     # ===========================
     def get_faculty_appointments(self, faculty_id):
         """List all appointments of a specific faculty."""
-        import logging
         appointments = self.appointments_db.read_all()
         entries = self.entries_db.read_all()
         blocks = self.blocks_db.read_all()
-
-        logging.debug(f"Faculty ID: {faculty_id}")
-        logging.debug(f"Total appointments: {len(appointments)}")
-        logging.debug(f"Total entries: {len(entries)}")
-        logging.debug(f"Total blocks: {len(blocks)}")
 
         faculty_entries = [
             e["id"]
             for e in entries
             for b in blocks
-            if "schedule_block_entry_id" in e and e["schedule_block_entry_id"] == b["id"] and b["faculty_id"] == faculty_id
+            if e["schedule_block_entry_id"] == b["id"] and b["faculty_id"] == faculty_id
         ]
-        logging.debug(f"Faculty entries: {faculty_entries}")
 
-        filtered_appointments = [
+        return [
             a for a in appointments
-            if "appointment_schedule_entry_id" in a and a["appointment_schedule_entry_id"] in faculty_entries
+            if a["appointment_schedule_entry_id"] in faculty_entries
         ]
-        logging.debug(f"Filtered appointments: {len(filtered_appointments)}")
-        return filtered_appointments
 
     # ===========================
     # UPDATE APPOINTMENT
     # ===========================
     def update_appointment(self, appointment_id, updates):
         """Simulates UpdateAppointmentAPIView (PUT/PATCH)."""
-        valid_statuses = ["pending", "approved", "canceled", "denied", "rescheduled"]
+        valid_statuses = ["pending", "approved", "canceled", "denied"]
         if "status" in updates and updates["status"] not in valid_statuses:
             raise ValueError(f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
         
@@ -179,80 +182,42 @@ class appointment_crud:
         })
 
     # ===========================
-    # DELETE APPOINTMENT
+    # SAMPLE DATA CREATION
     # ===========================
-    def delete_appointment(self, appointment_id):
-        """Delete an appointment by its ID."""
-        import logging
-        try:
-            result = self.appointments_db.delete(appointment_id)
-            if result:
-                logging.debug(f"Successfully deleted appointment with ID: {appointment_id}")
-            else:
-                logging.warning(f"No appointment found with ID: {appointment_id} for deletion")
-            return result
-        except Exception as e:
-            logging.error(f"Error deleting appointment {appointment_id}: {str(e)}")
-            return None
+    def create_sample_data(self):
+        """Create sample data for testing."""
+        # Create a faculty if none exists
+        if not self.list_faculty():
+            faculty = self.create_faculty("Kim", "Kim@school.edu", "IT Department")
+            faculty_id = faculty["id"]
+        else:
+            faculty = self.get_faculty_by_username("Kim")
+            faculty_id = faculty["id"] if faculty else 1
 
-# ===========================
-# SAMPLE USAGE
-# ===========================
-if __name__ == "__main__":
-    
-    
-    # --- Create sample faculty and student ---
-    # faculty = appointment_crud.create_faculty("Kim", "Kim@school.edu", "IT Department")
-    # student = appointment_crud.create_student("Alice Santos", "alice@student.edu", "BSIT", 3)
-    # student1 = appointment_crud.create_student("Badong Lee", "badong@student.edu", "BSIT", 3)
-    
-    faculty = appointment_crud()
-    faculty_list = faculty.list_faculty()
-    print(f"Faculty list: {faculty_list}")
-    for faculty in faculty_list:
-        if faculty["id"] == "1":
-            print(f"Found faculty: {faculty['name']} with ID: {faculty['id']}")
-            print( faculty["id"])
-    
-    
+        # Create students if none exist
+        if not self.list_students():
+            self.create_student("Alice Santos", "alice@student.edu", "BSIT", 3)
+            self.create_student("Badong Lee", "badong@student.edu", "BSIT", 3)
 
-   
-    # print("All Faculty:\n", appointment_crud.list_faculty())
-    # print("All Students:\n", appointment_crud.list_students())
+        # Create a schedule block and entries
+        if not self.get_active_block(faculty_id).get("id"):
+            result = self.plot_schedule(
+                faculty_id=faculty_id,
+                time_slots=[
+                    {"start": "09:00", "end": "10:00", "day": "Monday"},
+                    {"start": "10:00", "end": "11:00", "day": "Monday"}
+                ]
+            )
+            schedule_entry_id = result["entries"][0]["id"]
 
-    # # --- Faculty plots a schedule ---
-    # result = appointment_crud.plot_schedule(
-    #     faculty_id=faculty["id"],
-    #     time_slots=[
-    #         {"start": "09:00", "end": "10:00", "day": "Monday"},
-    #         {"start": "10:00", "end": "11:00", "day": "Monday"}
-    #     ]
-    # )
-    # print("\nSchedule plotted:", result)
-
-    # # --- Student books an appointment ---
-    # new_appointment = appointment_crud.create_appointment(
-    #     student_id=student["id"],
-    #     schedule_entry_id=result["entries"][0]["id"],
-    #     details="Consultation about project",
-    #     address="Room 305",
-    #     date_str="2025-10-08",
-    #     image_path="Uploads/consultation.png"
-    # )
-    # print("\nNew Appointment Created:", new_appointment)
-
-    # # --- Faculty views their appointments ---
-    # faculty_appts = appointment_crud.get_faculty_appointments(faculty["id"])
-    # print("\nFaculty Appointments:", faculty_appts)
-
-    # # --- Student views their appointments ---
-    # student_appts = appointment_crud.get_student_appointments(student["id"])
-    # print("\nStudent Appointments:", student_appts)
-
-    # # --- Update appointment status ---
-    # updated = appointment_crud.update_appointment(new_appointment["id"], {"status": "approved"})
-    # print("\nUpdated Appointment:", updated)
-
-    # # --- Delete appointment ---
-    # deletion_result = appointment_crud.delete_appointment(new_appointment["id"])
-    # print("\nDeletion Result:", deletion_result)
+            # Create a sample appointment
+            student = self.get_student_by_id(1)
+            if student:
+                self.create_appointment(
+                    student_id=student["id"],
+                    schedule_entry_id=schedule_entry_id,
+                    details="Consultation about project",
+                    address="Room 305",
+                    date_str="2025-10-08",
+                    image_path="Uploads/consultation.png"
+                )

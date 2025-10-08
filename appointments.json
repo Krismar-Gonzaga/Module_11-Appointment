@@ -1,15 +1,16 @@
 [
     {
         "student_id": 13,
-        "appointment_schedule_entry_id": 3,
-        "additional_details": "For my midterm requirements",
+        "appointment_schedule_entry_id": 1,
+        "additional_details": "saasfadasd",
         "address": "Faculty Office",
-        "status": "canceled",
-        "appointment_date": "2025-10-13",
-        "created_at": "2025-10-08 19:31:25.915899",
-        "updated_at": "2025-10-08 19:38:16.943870",
+        "status": "pending",
+        "appointment_date": "2025-11-05",
+        "created_at": "2025-10-08 20:41:12.840203",
+        "updated_at": "2025-10-08 20:41:12.840222",
         "image_path": "",
         "id": 1
+<<<<<<< HEAD
     },
     {
         "student_id": 13,
@@ -58,5 +59,7 @@
         "updated_at": "2025-10-08 19:47:09.292497",
         "image_path": "",
         "id": 5
+=======
+>>>>>>> e0136e7843f98f346fb9e1e044ad6e44488fce16
     }
 ]
