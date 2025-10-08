@@ -241,22 +241,22 @@ class AdminAppointmentPage_ui(QWidget):
             QtWidgets.QSizePolicy.Policy.Expanding, 
             QtWidgets.QSizePolicy.Policy.Expanding
         )
-        self.tableWidget_8.setMinimumHeight(200)
+        self.tableWidget_8.setMinimumHeight(100)
         
         header = self.tableWidget_8.horizontalHeader()
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Interactive)
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.Interactive)
-        header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeMode.Interactive)
-        
-        self.tableWidget_8.setColumnWidth(0, 200)
-        self.tableWidget_8.setColumnWidth(1, 180)
-        self.tableWidget_8.setColumnWidth(2, 180)
-        self.tableWidget_8.setColumnWidth(4, 150)
-        self.tableWidget_8.setColumnWidth(5, 150)
-        
+        header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeMode.Stretch)
+       
+        self.tableWidget_8.setColumnWidth(0, 220)
+        self.tableWidget_8.setColumnWidth(1, 200)
+        self.tableWidget_8.setColumnWidth(2, 200)
+        self.tableWidget_8.setColumnWidth(4, 170)
+        self.tableWidget_8.setColumnWidth(5, 170)
+        self.tableWidget_8.setFixedWidth(950)
         self.tableWidget_8.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
         self.tableWidget_8.horizontalHeader().setStyleSheet("""
             QHeaderView::section {
@@ -442,13 +442,7 @@ class AdminAppointmentPage_ui(QWidget):
         except Exception as e:
             print(f"Error loading appointments data: {e}")
             QMessageBox.warning(self, "Error", f"Failed to load appointments: {str(e)}")
-            self.rows = [
-                ["2025-10-08 09:00", "Dr. Smith", "John Doe", "Project Consultation", "Monday 09:00 - 09:30", "PENDING"],
-                ["2025-10-09 10:00", "Prof. Johnson", "Jane Smith", "Thesis Discussion", "Tuesday 10:00 - 10:30", "APPROVED"],
-                ["2025-10-10 11:00", "Dr. Brown", "Alice Lee", "Grade Inquiry", "Wednesday 11:00 - 11:30", "CANCELED"],
-            ]
-            self.all_appointments = self.rows.copy()
-            self._updateTableWithData(self.rows)
+            
 
     def resizeEvent(self, event):
         """Handle window resize to adjust layout and table"""

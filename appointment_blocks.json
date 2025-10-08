@@ -13,5 +13,10 @@
     "faculty_id": 1,
     "is_available": true,
     "id": 3
+  },
+  {
+    "faculty_id": 11,
+    "is_available": true,
+    "id": 4
   }
 ]
