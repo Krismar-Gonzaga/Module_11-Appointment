@@ -1,9 +1,9 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox
+from .appointment_crud import appointment_crud
 
 class StudentBrowseFaculty_ui(QWidget):
-
-    go_to_RequestPage = QtCore.pyqtSignal()
+    go_to_RequestPage = QtCore.pyqtSignal(dict)  # Emit faculty data
     back = QtCore.pyqtSignal()
 
     def __init__(self, username, roles, primary_role, token, parent=None):
@@ -12,38 +12,91 @@ class StudentBrowseFaculty_ui(QWidget):
         self.roles = roles
         self.primary_role = primary_role
         self.token = token
+        self.Appointment_crud = appointment_crud()
+        
         self.setWindowTitle("Appointment Scheduler")
         self.current_page = 0
         self.items_per_page = 6
-        self.faculties = self._getSampleFaculties()
+        self.faculties = []
+        
         self._setupBrowseFacultyPage()
+        self.load_faculties_data()
        
-    def _getSampleFaculties(self):
-        # Sample faculty data with email format
-        return [
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-            {"name": "alibaba@gmail.com", "role": "Request"},
-           
-        ]
+    def load_faculties_data(self):
+        """Load faculty data from JSON database"""
+        try:
+            faculties_data = self.Appointment_crud.list_faculty()
+            self.faculties = []
+            
+            for faculty in faculties_data:
+                self.faculties.append({
+                    "id": faculty.get('id'),
+                    "name": faculty.get('name', 'Unknown'),
+                    "email": faculty.get('email', 'No email'),
+                    "department": faculty.get('department', 'Unknown Department'),
+                    "role": "Request"
+                })
+            
+            if not self.faculties:
+                self._create_sample_faculties()
+                faculties_data = self.Appointment_crud.list_faculty()
+                for faculty in faculties_data:
+                    self.faculties.append({
+                        "id": faculty.get('id'),
+                        "name": faculty.get('name', 'Unknown'),
+                        "email": faculty.get('email', 'No email'),
+                        "department": faculty.get('department', 'Unknown Department'),
+                        "role": "Request"
+                    })
+            
+            self._populateFacultiesGrid()
+            
+        except Exception as e:
+            print(f"Error loading faculties data: {e}")
+            QMessageBox.warning(self, "Error", f"Failed to load faculty data: {str(e)}")
+            self.faculties = [
+                {"id": 1, "name": "Dr. Smith", "email": "smith@university.edu", "department": "Computer Science", "role": "Request"},
+                {"id": 2, "name": "Prof. Johnson", "email": "johnson@university.edu", "department": "Mathematics", "role": "Request"},
+                {"id": 3, "name": "Dr. Brown", "email": "brown@university.edu", "department": "Physics", "role": "Request"},
+                {"id": 4, "name": "Prof. Davis", "email": "davis@university.edu", "department": "Chemistry", "role": "Request"},
+                {"id": 5, "name": "Dr. Wilson", "email": "wilson@university.edu", "department": "Biology", "role": "Request"},
+                {"id": 6, "name": "Prof. Taylor", "email": "taylor@university.edu", "department": "Engineering", "role": "Request"},
+            ]
+            self._populateFacultiesGrid()
+
+    def _create_sample_faculties(self):
+        """Create sample faculty data if none exists"""
+        try:
+            sample_faculties = [
+                {"name": "Dr. Smith", "email": "smith@university.edu", "department": "Computer Science"},
+                {"name": "Prof. Johnson", "email": "johnson@university.edu", "department": "Mathematics"},
+                {"name": "Dr. Brown", "email": "brown@university.edu", "department": "Physics"},
+                {"name": "Prof. Davis", "email": "davis@university.edu", "department": "Chemistry"},
+                {"name": "Dr. Wilson", "email": "wilson@university.edu", "department": "Biology"},
+                {"name": "Prof. Taylor", "email": "taylor@university.edu", "department": "Engineering"},
+                {"name": "Dr. Anderson", "email": "anderson@university.edu", "department": "Psychology"},
+                {"name": "Prof. Martinez", "email": "martinez@university.edu", "department": "Sociology"},
+                {"name": "Dr. Clark", "email": "clark@university.edu", "department": "Economics"},
+                {"name": "Prof. Rodriguez", "email": "rodriguez@university.edu", "department": "Business"},
+            ]
+            
+            for faculty in sample_faculties:
+                self.Appointment_crud.create_faculty(
+                    faculty["name"],
+                    faculty["email"],
+                    faculty["department"]
+                )
+                
+        except Exception as e:
+            print(f"Error creating sample faculties: {e}")
 
     def _setupBrowseFacultyPage(self):
         self.setObjectName("AppointmentScheduler")
         
-        # Main layout
         scheduler_layout = QtWidgets.QVBoxLayout(self)
         scheduler_layout.setContentsMargins(0, 0, 0, 0)
         scheduler_layout.setSpacing(10)
         
-        # Header
         header_widget = QtWidgets.QWidget()
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
@@ -59,14 +112,29 @@ class StudentBrowseFaculty_ui(QWidget):
         header_layout.addWidget(self.Academics_5)
         header_layout.addStretch(1)
 
+        self.refreshButton = QtWidgets.QPushButton("Refresh")
+        self.refreshButton.setFixedSize(100, 35)
+        self.refreshButton.setStyleSheet("""
+            QPushButton {
+                background-color: #2F80ED;
+                color: white;
+                border-radius: 8px;
+                font: 10pt 'Poppins';
+            }
+            QPushButton:hover {
+                background-color: #2a75e0;
+            }
+        """)
+        self.refreshButton.clicked.connect(self.load_faculties_data)
+        header_layout.addWidget(self.refreshButton)
+
         self.backbutton = QtWidgets.QPushButton("<- Back")
-        self.backbutton.setIcon(QtGui.QIcon(":assets/images/back_button.png"))
+        self.backbutton.setIcon(QtGui.QIcon(":/assets/images/back_button.png"))
         self.backbutton.clicked.connect(self.back)
         header_layout.addWidget(self.backbutton)
         
         scheduler_layout.addWidget(header_widget)
         
-        # Content widget
         self.widget_25 = QtWidgets.QWidget()
         self.widget_25.setStyleSheet("QWidget#widget_25 { background-color: #FFFFFF; border-radius: 20px; }")
         self.widget_25.setObjectName("widget_25")
@@ -75,7 +143,6 @@ class StudentBrowseFaculty_ui(QWidget):
         widget_layout.setContentsMargins(20, 20, 20, 20)
         widget_layout.setSpacing(15)
         
-        # Faculties section
         self._setupFacultiesSection(widget_layout)
         
         scheduler_layout.addWidget(self.widget_25, 1)
@@ -83,7 +150,6 @@ class StudentBrowseFaculty_ui(QWidget):
         self.retranslateUi()
 
     def _setupFacultiesSection(self, parent_layout):
-        # Faculties container
         faculties_container = QtWidgets.QWidget()
         faculties_container.setObjectName("faculties_container")
         
@@ -91,7 +157,6 @@ class StudentBrowseFaculty_ui(QWidget):
         faculties_layout.setContentsMargins(0, 0, 0, 0)
         faculties_layout.setSpacing(15)
         
-        # Faculties header
         faculties_header = QtWidgets.QLabel()
         faculties_header.setObjectName("faculties_header")
         faculties_header.setStyleSheet("""
@@ -103,7 +168,6 @@ class StudentBrowseFaculty_ui(QWidget):
         """)
         faculties_layout.addWidget(faculties_header)
         
-        # Faculties grid container with scroll area
         self.faculties_scroll_area = QtWidgets.QScrollArea()
         self.faculties_scroll_area.setWidgetResizable(True)
         self.faculties_scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -137,7 +201,6 @@ class StudentBrowseFaculty_ui(QWidget):
         self.faculties_scroll_area.setWidget(self.faculties_grid_widget)
         faculties_layout.addWidget(self.faculties_scroll_area, 1)
         
-        # Pagination controls
         self._setupPaginationControls(faculties_layout)
         
         parent_layout.addWidget(faculties_container, 1)
@@ -147,7 +210,6 @@ class StudentBrowseFaculty_ui(QWidget):
         pagination_layout = QtWidgets.QHBoxLayout(pagination_widget)
         pagination_layout.setContentsMargins(0, 10, 0, 0)
         
-        # Previous button
         self.prev_button = QtWidgets.QPushButton("Previous")
         self.prev_button.setFixedSize(100, 35)
         self.prev_button.setStyleSheet("""
@@ -164,7 +226,6 @@ class StudentBrowseFaculty_ui(QWidget):
         """)
         self.prev_button.clicked.connect(self._previousPage)
         
-        # Page info
         self.page_info = QtWidgets.QLabel()
         self.page_info.setStyleSheet("""
             QLabel {
@@ -174,7 +235,6 @@ class StudentBrowseFaculty_ui(QWidget):
         """)
         self.page_info.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         
-        # Next button
         self.next_button = QtWidgets.QPushButton("Next")
         self.next_button.setFixedSize(100, 35)
         self.next_button.setStyleSheet("""
@@ -202,37 +262,30 @@ class StudentBrowseFaculty_ui(QWidget):
         parent_layout.addWidget(pagination_widget)
 
     def _populateFacultiesGrid(self):
-        # Clear existing items
         for i in reversed(range(self.faculties_grid_layout.count())):
             widget = self.faculties_grid_layout.itemAt(i).widget()
             if widget:
                 widget.deleteLater()
         
-        # Calculate start and end indices for current page
         start_index = self.current_page * self.items_per_page
         end_index = min(start_index + self.items_per_page, len(self.faculties))
         
-        # Add faculty cards for current page
         for i in range(start_index, end_index):
             faculty = self.faculties[i]
             position = i - start_index
-            row = position // 3  # 3 columns
-            col = position % 3   # 3 columns
-            
-            faculty_card = self._createFacultyCard(faculty["name"], faculty["role"])
+            row = position // 3
+            col = position % 3
+            faculty_card = self._createFacultyCard(faculty)
             self.faculties_grid_layout.addWidget(faculty_card, row, col)
         
-        # Update pagination info
         total_pages = (len(self.faculties) + self.items_per_page - 1) // self.items_per_page
         self.page_info.setText(f"Page {self.current_page + 1} of {total_pages}")
-        
-        # Update button states
         self.prev_button.setEnabled(self.current_page > 0)
         self.next_button.setEnabled(self.current_page < total_pages - 1)
 
-    def _createFacultyCard(self, name, role):
+    def _createFacultyCard(self, faculty):
         card = QtWidgets.QWidget()
-        card.setFixedSize(250, 300)  # Adjusted size to match the image
+        card.setFixedSize(250, 300)
         card.setStyleSheet("""
             QWidget {
                 background-color: #FFFFFF;
@@ -249,7 +302,6 @@ class StudentBrowseFaculty_ui(QWidget):
         card_layout.setContentsMargins(15, 15, 15, 15)
         card_layout.setSpacing(10)
         
-        # Profile image placeholder
         profile_image = QLabel()
         profile_image.setFixedSize(80, 80)
         profile_image.setStyleSheet("""
@@ -260,8 +312,7 @@ class StudentBrowseFaculty_ui(QWidget):
         """)
         card_layout.addWidget(profile_image, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
         
-        # Email label (below image)
-        email_label = QLabel(name)
+        email_label = QLabel(faculty["email"])
         email_label.setStyleSheet("""
             QLabel {
                 font: 12pt 'Poppins';
@@ -270,10 +321,10 @@ class StudentBrowseFaculty_ui(QWidget):
             }
         """)
         email_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        email_label.setWordWrap(True)
         card_layout.addWidget(email_label)
         
-        # Name label (below email)
-        name_label = QLabel("Alibaba Dot Com")  # Static name as per image
+        name_label = QLabel(faculty["name"])
         name_label.setStyleSheet("""
             QLabel {
                 font: 14pt 'Poppins';
@@ -284,8 +335,18 @@ class StudentBrowseFaculty_ui(QWidget):
         name_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(name_label)
         
-        # Request button (at bottom)
-        request_button = QPushButton(role)
+        dept_label = QLabel(faculty["department"])
+        dept_label.setStyleSheet("""
+            QLabel {
+                font: 11pt 'Poppins';
+                color: #666666;
+                text-align: center;
+            }
+        """)
+        dept_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(dept_label)
+        
+        request_button = QPushButton(faculty["role"])
         request_button.setFixedSize(120, 40)
         request_button.setStyleSheet("""
             QPushButton {
@@ -302,7 +363,7 @@ class StudentBrowseFaculty_ui(QWidget):
                 background-color: #063818;
             }
         """)
-        request_button.clicked.connect(lambda checked, n=name: self._onRequestClicked(n))
+        request_button.clicked.connect(lambda checked, f=faculty: self._onRequestClicked(f))
         
         button_container = QtWidgets.QWidget()
         button_layout = QtWidgets.QHBoxLayout(button_container)
@@ -315,11 +376,26 @@ class StudentBrowseFaculty_ui(QWidget):
         
         return card
 
-    def _onRequestClicked(self, faculty_email):
+    def _onRequestClicked(self, faculty):
         """Handle request button click"""
-        print(f"Request appointment with {faculty_email}")
-        self.go_to_RequestPage.emit()
-        # Here you would implement the actual request logic
+        print(f"Request appointment with {faculty['name']}")
+        try:
+            active_block = self.Appointment_crud.get_active_block(faculty["id"])
+            if active_block and "error" not in active_block:
+                self.go_to_RequestPage.emit(faculty)
+            else:
+                QMessageBox.information(
+                    self,
+                    "No Available Schedule",
+                    f"{faculty['name']} doesn't have any available schedule at the moment.\n\nPlease check back later or contact the faculty directly."
+                )
+        except Exception as e:
+            print(f"Error checking faculty availability: {e}")
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"Failed to check faculty availability: {str(e)}"
+            )
 
     def _previousPage(self):
         if self.current_page > 0:
@@ -333,13 +409,7 @@ class StudentBrowseFaculty_ui(QWidget):
             self._populateFacultiesGrid()
 
     def retranslateUi(self):
-        # Appointment Scheduler page
         self.Academics_5.setText("Faculties")
-        
-        # Find and update the faculties header
         faculties_header = self.findChild(QtWidgets.QLabel, "faculties_header")
         if faculties_header:
             faculties_header.setText("See Available Faculties")
-        
-        # Populate the initial grid
-        self._populateFacultiesGrid()

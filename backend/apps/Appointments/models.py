@@ -23,7 +23,7 @@ class Appointment(models.Model):
     address = models.CharField(max_length=50)
     #status =  ["pending", "approved", "denied", "rescheduled", "canceled", "completed"]
     status = models.CharField(max_length=15, default="pending")
-    appointment_date = models.DateField();
+    appointment_date = models.DateField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True) 
     image_path = models.CharField(max_length=100)

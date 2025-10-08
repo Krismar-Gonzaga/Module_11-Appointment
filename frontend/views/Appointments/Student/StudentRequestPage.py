@@ -1,29 +1,198 @@
-
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
-
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMessageBox
+from .appointment_crud import appointment_crud
+from datetime import datetime
 
 class StudentRequestPage_ui(QWidget):
     back = QtCore.pyqtSignal()
+    
     def __init__(self, username, roles, primary_role, token, parent=None):
         super().__init__(parent)
         self.username = username
         self.roles = roles
         self.primary_role = primary_role
         self.token = token
+        self.Appointment_crud = appointment_crud()
+        self.selected_faculty = None
+        self.selected_schedule_entry = None
+        self.selected_date = None
+        self.slot_buttons = []
+        self.slots_container = None  # New: Dedicated container for slots
+        
         self._setupStudentRequestPage()
         self.retranslateUi()
 
-    def _setupStudentRequestPage(self):
+    def set_faculty_data(self, faculty_data):
+        """Set the faculty data when navigating from browse page"""
+        self.selected_faculty = faculty_data
+        self._updateFacultyInfo()
+        self._loadAvailableSlots()
 
+    def _updateFacultyInfo(self):
+        """Update the UI with faculty information"""
+        if self.selected_faculty:
+            self.label_29.setText(self.selected_faculty["name"])
+            self.label_30.setText(f"Select Date & Time with {self.selected_faculty['name']}")
+            current_date = datetime.now()
+            self.month_header.setText(current_date.strftime("%B %Y"))
+
+    def _loadAvailableSlots(self):
+        """Load available time slots for the selected faculty based on their schedule"""
+        if not self.selected_faculty:
+            return
+            
+        try:
+            # Clear existing slot buttons
+            for btn in self.slot_buttons:
+                btn.deleteLater()
+            self.slot_buttons.clear()
+            
+            # Clear the slots container content
+            if self.slots_container:
+                for i in reversed(range(self.slots_layout.count())):
+                    item = self.slots_layout.itemAt(i)
+                    if item.widget():
+                        item.widget().deleteLater()
+                    self.slots_layout.removeItem(item)
+            
+            # Get active block and entries
+            active_block = self.Appointment_crud.get_active_block(self.selected_faculty["id"])
+            
+            if active_block and "error" not in active_block:
+                block_entries = self.Appointment_crud.get_block_entries(active_block["id"])
+                
+                if block_entries:
+                    # Ensure slots_container and slots_layout exist
+                    if not self.slots_container:
+                        self.slots_container = QtWidgets.QWidget()
+                        self.slots_layout = QtWidgets.QVBoxLayout(self.slots_container)
+                        self.slots_layout.setContentsMargins(5, 5, 5, 5)
+                        self.slots_layout.setSpacing(8)
+                        
+                        slots_scroll = QtWidgets.QScrollArea()
+                        slots_scroll.setWidgetResizable(True)
+                        slots_scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+                        slots_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+                        slots_scroll.setStyleSheet("""
+                            QScrollArea {
+                                border: none;
+                                background: transparent;
+                            }
+                            QScrollBar:vertical {
+                                background: #f0f0f0;
+                                width: 8px;
+                                margin: 0px;
+                                border-radius: 4px;
+                            }
+                            QScrollBar::handle:vertical {
+                                background: #c0c0c0;
+                                border-radius: 4px;
+                                min-height: 20px;
+                            }
+                        """)
+                        slots_scroll.setWidget(self.slots_container)
+                        
+                        # Replace old scroll area with new one
+                        old_widget = self.availableSlot.layout().itemAt(0)
+                        if old_widget and old_widget.widget():
+                            old_widget.widget().deleteLater()
+                        self.availableSlot.layout().insertWidget(0, slots_scroll)
+                    
+                    # Populate slot buttons
+                    for entry in block_entries:
+                        start_time = entry.get('start_time', '')
+                        end_time = entry.get('end_time', '')
+                        day_of_week = entry.get('day_of_week', '')
+                        
+                        slot_text = f"{day_of_week} {start_time} - {end_time}"
+                        
+                        btn = QtWidgets.QPushButton(slot_text)
+                        btn.setFixedHeight(45)
+                        btn.setCheckable(True)
+                        btn.setProperty("schedule_entry_id", entry["id"])
+                        btn.setProperty("day_of_week", day_of_week)
+                        btn.setProperty("start_time", start_time)
+                        btn.setProperty("end_time", end_time)
+                        btn.setStyleSheet(self.slot_style(default=True))
+                        btn.clicked.connect(lambda checked, b=btn, e=entry: self.select_slot(b, e))
+                        self.slots_layout.addWidget(btn)
+                        self.slot_buttons.append(btn)
+                    
+                    self.slots_layout.addStretch(1)
+                    
+                    if self.slot_buttons:
+                        self.slot_buttons[0].setChecked(True)
+                        self.slot_buttons[0].setStyleSheet(self.slot_style(selected=True))
+                        self.selected_schedule_entry = block_entries[0]
+                        self._updateCalendarForSelectedDay(block_entries[0].get('day_of_week', ''))
+                    else:
+                        self.selected_schedule_entry = None
+                        self._showNoSlotsMessage()
+                else:
+                    self._showNoSlotsMessage()
+            else:
+                self._showNoSlotsMessage()
+                
+        except Exception as e:
+            print(f"Error loading available slots: {e}")
+            QMessageBox.warning(self, "Error", f"Failed to load available slots: {str(e)}")
+            self._showNoSlotsMessage()
+
+    def _showNoSlotsMessage(self):
+        """Show message when no slots are available"""
+        no_slots_label = QtWidgets.QLabel("No available time slots\nfor this faculty")
+        no_slots_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        no_slots_label.setStyleSheet("""
+            QLabel {
+                font: 12pt 'Poppins';
+                color: #666666;
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 20px;
+            }
+        """)
+        no_slots_label.setWordWrap(True)
+        
+        # Clear existing scroll area
+        old_widget = self.availableSlot.layout().itemAt(0)
+        if old_widget and old_widget.widget():
+            old_widget.widget().deleteLater()
+        
+        self.availableSlot.layout().insertWidget(0, no_slots_label)
+        self.selected_schedule_entry = None
+        if hasattr(self, 'button_4') and self.button_4:
+            self.button_4.setEnabled(False)
+
+    def _updateCalendarForSelectedDay(self, day_of_week):
+        """Update calendar to highlight the selected day"""
+        try:
+            day_mapping = {
+                "Monday": 1, "Tuesday": 2, "Wednesday": 3, 
+                "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7
+            }
+            
+            if day_of_week in day_mapping:
+                target_day = day_mapping[day_of_week]
+                current_date = self.calendarWidget.selectedDate()
+                
+                days_to_add = (target_day - current_date.dayOfWeek()) % 7
+                if days_to_add == 0:
+                    days_to_add = 7
+                
+                new_date = current_date.addDays(days_to_add)
+                self.calendarWidget.setSelectedDate(new_date)
+                self.selected_date = new_date.toString('yyyy-MM-dd')
+                
+        except Exception as e:
+            print(f"Error updating calendar: {e}")
+
+    def _setupStudentRequestPage(self):
         self.setObjectName("facultyreschedule")
         
-        # Main layout
         reschedule_layout = QtWidgets.QVBoxLayout(self)
         reschedule_layout.setContentsMargins(0, 0, 0, 0)
         reschedule_layout.setSpacing(10)
         
-        # Header
         header_widget = QtWidgets.QWidget()
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(30, 0, 30, 0)
@@ -54,7 +223,6 @@ class StudentRequestPage_ui(QWidget):
         
         reschedule_layout.addWidget(header_widget)
         
-        # Content widget
         self.widget_3 = QtWidgets.QWidget()
         self.widget_3.setStyleSheet("QWidget#widget_3 { background-color: #FFFFFF; border-radius: 20px; }")
         self.widget_3.setObjectName("widget_3")
@@ -63,7 +231,6 @@ class StudentRequestPage_ui(QWidget):
         widget_layout.setContentsMargins(10, 0, 10, 0)
         widget_layout.setSpacing(5)
         
-        # Faculty header - Updated to match screenshot design
         self.nameheader = QtWidgets.QFrame()
         self.nameheader.setContentsMargins(30, 0, 30, 0)
         self.nameheader.setStyleSheet("""
@@ -75,8 +242,6 @@ class StudentRequestPage_ui(QWidget):
         self.nameheader.setObjectName("nameheader")
         self.nameheader.setFixedHeight(80)
         
-        #Effects
-
         shadow = QtWidgets.QGraphicsDropShadowEffect()
         shadow.setBlurRadius(20)
         shadow.setOffset(0, 3)
@@ -88,29 +253,27 @@ class StudentRequestPage_ui(QWidget):
         nameheader_layout.setSpacing(12)
         nameheader_layout.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        # Profile icon inside a blue circle
         self.label_32 = QtWidgets.QLabel()
         self.label_32.setFixedSize(50, 50)
         self.label_32.setPixmap(QtGui.QPixmap(":/assets/profile_icon.png"))
         self.label_32.setScaledContents(True)
         self.label_32.setStyleSheet("""
             QLabel {
-                background: #4285F4;      /* Blue circle */
-                border-radius: 25px;      /* Half of width/height */
+                background: #4285F4;
+                border-radius: 25px;
                 border: 2px solid white;
             }
         """)
         
-        # Name text
-        self.label_29 = QtWidgets.QLabel("Shapi Dot Com")
+        self.label_29 = QtWidgets.QLabel("Select a Faculty")
         font = QtGui.QFont("Poppins", 18, QtGui.QFont.Weight.Bold)
         self.label_29.setFont(font)
-        self.label_29.setStyleSheet("color: #084924;")  # Dark green
+        self.label_29.setStyleSheet("color: #084924;")
         self.label_29.setAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter)
 
         nameheader_layout.addWidget(self.label_32)
         nameheader_layout.addWidget(self.label_29, 1)
-        # Center the floating header in the main layout
+
         center_layout = QtWidgets.QHBoxLayout()
         center_layout.setContentsMargins(0, 0, 0, 0)
         center_layout.addStretch()
@@ -119,29 +282,23 @@ class StudentRequestPage_ui(QWidget):
 
         widget_layout.addLayout(center_layout)
 
-        # Subtitle: "Select Date & Time"
         self.subtitle = QtWidgets.QLabel("Select Date & Time")
         subtitle_font = QtGui.QFont("Poppins", 14, QtGui.QFont.Weight.Medium)
         self.subtitle.setFont(subtitle_font)
-        self.subtitle.setStyleSheet("color: #084924;")  # Dark green
+        self.subtitle.setStyleSheet("color: #084924;")
         self.subtitle.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-
-        # Add under header
         widget_layout.addWidget(self.subtitle)
 
-        # Main content area - Updated layout to match screenshot
         content_widget = QtWidgets.QWidget()
         content_layout = QtWidgets.QHBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(20)
         
-        # Left side - Calendar section
         left_widget = QtWidgets.QWidget()
         left_layout = QtWidgets.QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(10)
         
-        # Section header - Updated to match screenshot
         calendar_header = QtWidgets.QWidget()
         calendar_header_layout = QtWidgets.QHBoxLayout(calendar_header)
         calendar_header_layout.setContentsMargins(0, 0, 0, 0)
@@ -159,18 +316,16 @@ class StudentRequestPage_ui(QWidget):
         
         left_layout.addWidget(calendar_header)
         
-        # Month/year header - Added to match screenshot
-        month_header = QtWidgets.QLabel()
+        self.month_header = QtWidgets.QLabel()
         font = QtGui.QFont()
         font.setPointSize(14)
         font.setBold(True)
-        month_header.setFont(font)
-        month_header.setStyleSheet("QLabel { color: #084924; background: transparent; }")
-        month_header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        month_header.setText("August 2025")
-        left_layout.addWidget(month_header)
+        self.month_header.setFont(font)
+        self.month_header.setStyleSheet("QLabel { color: #084924; background: transparent; }")
+        self.month_header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.month_header.setText(datetime.now().strftime("%B %Y"))
+        left_layout.addWidget(self.month_header)
         
-        # Days of week header - Added to match screenshot
         days_widget = QtWidgets.QWidget()
         days_layout = QtWidgets.QHBoxLayout(days_widget)
         days_layout.setContentsMargins(0, 0, 0, 0)
@@ -192,8 +347,6 @@ class StudentRequestPage_ui(QWidget):
         
         left_layout.addWidget(days_widget)
 
-
-        # Parent container (QWidget) for calendar
         self.calendarCard = QtWidgets.QWidget()
         self.calendarCard.setStyleSheet("""
             QWidget#calendarCard {
@@ -204,13 +357,9 @@ class StudentRequestPage_ui(QWidget):
         """)
         self.calendarCard.setObjectName("calendarCard")
 
-
-        # Layout for the card
         calendar_layout = QtWidgets.QVBoxLayout(self.calendarCard)
         calendar_layout.setContentsMargins(10, 10, 10, 10)
         
-        
-        # Calendar widget - Updated styling
         self.calendarWidget = QtWidgets.QCalendarWidget()
         self.calendarWidget.setVerticalHeaderFormat(QtWidgets.QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         self.calendarWidget.setHorizontalHeaderFormat(QtWidgets.QCalendarWidget.HorizontalHeaderFormat.NoHorizontalHeader)
@@ -221,14 +370,11 @@ class StudentRequestPage_ui(QWidget):
                 border-radius: 10px;
                 font: 10pt 'Poppins';
             }
-
-            /* Navigation bar (month/year and arrows) */
             QCalendarWidget QWidget#qt_calendar_navigationbar {
                 background: transparent;
                 border: none;
                 margin: 10px;
             }
-
             QCalendarWidget QToolButton {
                 background: transparent;
                 color: #084924;
@@ -239,8 +385,6 @@ class StudentRequestPage_ui(QWidget):
             QCalendarWidget QToolButton:hover {
                 color: #0a5a2f;
             }
-
-            /* Left/right month arrows */
             QCalendarWidget QToolButton#qt_calendar_prevmonth {
                 qproperty-icon: url(:/assets/arrow_left.png);
                 icon-size: 16px;
@@ -249,15 +393,11 @@ class StudentRequestPage_ui(QWidget):
                 qproperty-icon: url(:/assets/arrow_right.png);
                 icon-size: 16px;
             }
-
-            /* Month/Year label */
             QCalendarWidget QToolButton#qt_calendar_monthbutton,
             QCalendarWidget QToolButton#qt_calendar_yearbutton {
                 font: bold 12pt 'Poppins';
                 color: #084924;
             }
-
-            /* Days of week header */
             QCalendarWidget QTableView {
                 selection-background-color: transparent;
                 selection-color: black;
@@ -269,8 +409,6 @@ class StudentRequestPage_ui(QWidget):
                 border: none;
                 padding: 6px 0;
             }
-
-            /* Days grid */
             QCalendarWidget QAbstractItemView:enabled {
                 color: #084924;
                 font: 10pt 'Poppins';
@@ -284,21 +422,11 @@ class StudentRequestPage_ui(QWidget):
                 color: #cccccc;
             }
         """)
-
-        self.calendarWidget.setObjectName("calendarWidget")
-        # Add calendar to the card layout
+        self.calendarWidget.selectionChanged.connect(self._onDateSelected)
+        
         calendar_layout.addWidget(self.calendarWidget)
-       
-       
-        # Set to August 2025 as shown in screenshot
-        target_date = QtCore.QDate(2025, 8, 1)
-        self.calendarWidget.setSelectedDate(target_date)
-        
-        # Now add the calendarCard into your main page layout
         left_layout.addWidget(self.calendarCard, 1)
-
         
-        # Right (time slots)
         right_widget = QtWidgets.QWidget()
         right_layout = QtWidgets.QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
@@ -311,39 +439,35 @@ class StudentRequestPage_ui(QWidget):
         right_layout.addWidget(self.label_31)
 
         self.availableSlot = QtWidgets.QFrame()
-        self.availableSlot.setStyleSheet("background: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px;")
+        self.availableSlot.setStyleSheet("""
+            QFrame#availableSlot {
+                background: #ffffff; 
+                border: 1px solid #e0e0e0; 
+                border-radius: 10px;
+            }
+        """)
+        self.availableSlot.setObjectName("availableSlot")
         available_layout = QtWidgets.QVBoxLayout(self.availableSlot)
-        available_layout.setContentsMargins(0, 0, 0, 0)  # removes top/bottom/left/right margins
+        available_layout.setContentsMargins(15, 15, 15, 15)
         available_layout.setSpacing(10)
 
+        initial_message = QtWidgets.QLabel("Please select a faculty first")
+        initial_message.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        initial_message.setStyleSheet("""
+            QLabel {
+                font: 12pt 'Poppins';
+                color: #666666;
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 20px;
+            }
+        """)
+        available_layout.addWidget(initial_message)
 
-        # Slot buttons (radio style)
-        self.slot_buttons = []
-        slot_times = ["7:00am - 7:30am", "8:00am - 8:30am", "9:00am - 9:30am"]
-
-        slots_layout = QtWidgets.QHBoxLayout()
-        slots_layout.setSpacing(12)
-
-        for i, time in enumerate(slot_times):
-            btn = QtWidgets.QPushButton(time)
-            btn.setFixedHeight(45)
-            btn.setCheckable(True)
-            btn.setStyleSheet(self.slot_style(default=True))
-            btn.clicked.connect(lambda checked, b=btn: self.select_slot(b))
-            slots_layout.addWidget(btn)
-            self.slot_buttons.append(btn)
-
-        # Default select first button
-        self.slot_buttons[0].setChecked(True)
-        self.slot_buttons[0].setStyleSheet(self.slot_style(selected=True))
-
-        available_layout.addLayout(slots_layout)
-
-        # Request button
-        self.button_4 = QtWidgets.QPushButton("Request")
+        self.button_4 = QtWidgets.QPushButton("Request Appointment")
         self.button_4.setFixedHeight(50)
         self.button_4.setContentsMargins(0, 20, 0, 0)
-        self.button_4.clicked.connect(lambda: self._showRequestDialog())
+        self.button_4.clicked.connect(self._showRequestDialog)
         self.button_4.setFont(QtGui.QFont("Poppins", 14, QtGui.QFont.Weight.Bold))
         self.button_4.setStyleSheet("""
             QPushButton {
@@ -354,7 +478,12 @@ class StudentRequestPage_ui(QWidget):
             }
             QPushButton:hover { background-color: #0a5a2f; }
             QPushButton:pressed { background-color: #06381b; }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
         """)
+        self.button_4.setEnabled(False)
         available_layout.addWidget(self.button_4)
 
         right_layout.addWidget(self.availableSlot, 1)
@@ -364,90 +493,11 @@ class StudentRequestPage_ui(QWidget):
 
         widget_layout.addWidget(content_widget, 1)
         reschedule_layout.addWidget(self.widget_3, 1)
-        
-       
-    def timebutton_clicked(self, button):
-        self.button_1.setStyleSheet("""
-            QPushButton#button_1 {
-                background-color: #ffffff;
-                color: #333333;
-                border: 2px solid #084924;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font: 600 11pt 'Poppins';
-            }
-            QPushButton#button_1:hover {
-                background-color: #f0f7f3;
-            }
-            QPushButton#button_1:pressed {
-                background-color: #e0f0e8;
-            }
-        """)
-        self.button_2.setStyleSheet("""
-            QPushButton#button_2 {
-                background-color: #ffffff;
-                color: #333333;
-                border: 2px solid #084924;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font: 600 11pt 'Poppins';
-            }
-            QPushButton#button_2:hover {
-                background-color: #f0f7f3;
-            }
-            QPushButton#button_2:pressed {
-                background-color: #e0f0e8;
-            }
-        """)
-        self.button_3.setStyleSheet("""
-            QPushButton#button_3 {
-                background-color: #ffffff;
-                color: #333333;
-                border: 2px solid #084924;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font: 600 11pt 'Poppins';
-            }
-            QPushButton#button_3:hover {
-                background-color: #f0f7f3;
-            }
-            QPushButton#button_3:pressed {
-                background-color: #e0f0e8;
-            }
-        """)
-        if button == self.button_1:
-            self.button_1.setStyleSheet("""
-                QPushButton#button_1 {
-                    background-color: #084924;
-                    color: white;
-                    border: 2px solid #084924;
-                    border-radius: 8px;
-                    padding: 10px 20px;
-                    font: 600 11pt 'Poppins';
-                }
-            """)
-        elif button == self.button_2:
-            self.button_2.setStyleSheet("""
-                QPushButton#button_2 {
-                    background-color: #084924;
-                    color: white;
-                    border: 2px solid #084924;
-                    border-radius: 8px;
-                    padding: 10px 20px;
-                    font: 600 11pt 'Poppins';
-                }
-            """)
-        elif button == self.button_3:
-            self.button_3.setStyleSheet("""
-                QPushButton#button_3 {
-                    background-color: #084924;
-                    color: white;
-                    border: 2px solid #084924;
-                    border-radius: 8px;
-                    padding: 10px 20px;
-                    font: 600 11pt 'Poppins';
-                }
-            """)
+
+    def _onDateSelected(self):
+        """Handle date selection from calendar"""
+        self.selected_date = self.calendarWidget.selectedDate().toString('yyyy-MM-dd')
+        print(f"Selected date: {self.selected_date}")
 
     def slot_style(self, default=False, selected=False):
         if selected:
@@ -459,6 +509,9 @@ class StudentRequestPage_ui(QWidget):
                 border-radius: 8px;
                 padding: 10px 20px;
                 font: 600 11pt 'Poppins';
+            }
+            QPushButton:hover {
+                background-color: #0a5a2f;
             }"""
         else:
             return """
@@ -470,25 +523,54 @@ class StudentRequestPage_ui(QWidget):
                 padding: 10px 20px;
                 font: 600 11pt 'Poppins';
             }
-            QPushButton:hover { background-color: #f0f7f3; }
-            QPushButton:pressed { background-color: #e0f0e8; }
+            QPushButton:hover { 
+                background-color: #f0f7f3; 
+            }
+            QPushButton:pressed { 
+                background-color: #e0f0e8; 
+            }
             """
 
-    def select_slot(self, button):
+    def select_slot(self, button, schedule_entry):
+        """Handle slot selection"""
         for btn in self.slot_buttons:
             btn.setChecked(False)
             btn.setStyleSheet(self.slot_style(default=True))
         button.setChecked(True)
         button.setStyleSheet(self.slot_style(selected=True))
-
-
+        self.selected_schedule_entry = schedule_entry
+        
+        day_of_week = schedule_entry.get('day_of_week', '')
+        self._updateCalendarForSelectedDay(day_of_week)
+        
+        # Safely enable button_4 if it exists
+        if hasattr(self, 'button_4') and self.button_4 and not self.button_4.isHidden():
+            self.button_4.setEnabled(True)
+        
+        print(f"Selected schedule: {day_of_week} {schedule_entry['start_time']} - {schedule_entry['end_time']}")
 
     def _showRequestDialog(self):
-        """Show an enhanced dialog with purpose details and appointment info"""
+        """Show request dialog to collect appointment details"""
+        if not self.selected_faculty:
+            QMessageBox.warning(self, "Warning", "Please select a faculty first.")
+            return
+            
+        if not self.selected_schedule_entry:
+            QMessageBox.warning(self, "Warning", "Please select a time slot.")
+            return
+            
+        if not self.selected_date:
+            QMessageBox.warning(self, "Warning", "Please select a date.")
+            return
+
+        self._showAppointmentDetailsDialog()
+
+    def _showAppointmentDetailsDialog(self):
+        """Show dialog with appointment details and purpose form"""
         dialog = QtWidgets.QDialog()
-        dialog.setWindowTitle("Appointment Details")
+        dialog.setWindowTitle("Appointment Request")
         dialog.setModal(True)
-        dialog.setFixedSize(550, 700)  # Increased height to accommodate new elements
+        dialog.setFixedSize(500, 600)
         dialog.setStyleSheet("""
             QDialog {
                 background-color: white;
@@ -496,91 +578,22 @@ class StudentRequestPage_ui(QWidget):
             }
         """)
         
-        # Main layout for the dialog
-        main_layout = QtWidgets.QVBoxLayout(dialog)
-        main_layout.setContentsMargins(0, 0, 0, 0)  # Remove margins for scroll area
-        main_layout.setSpacing(0)
+        layout = QtWidgets.QVBoxLayout(dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
         
-        # Create scroll area
-        scroll_area = QtWidgets.QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll_area.setStyleSheet("""
-            QScrollArea {
-                border: none;
-                background: white;
-            }
-            QScrollBar:vertical {
-                background: #f0f0f0;
-                width: 12px;
-                margin: 0px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background: #c0c0c0;
-                border-radius: 6px;
-                min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #a0a0a0;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                border: none;
-                background: none;
-            }
-        """)
-        
-        # Create scroll content widget
-        scroll_content = QtWidgets.QWidget()
-        scroll_content.setStyleSheet("QWidget { background: white; }")
-        
-        # Main content layout for scroll area
-        content_layout = QtWidgets.QVBoxLayout(scroll_content)
-        content_layout.setContentsMargins(24, 20, 24, 20)
-        content_layout.setSpacing(20)
-        
-        # Header with icon and title
-        header_widget = QtWidgets.QWidget()
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Icon
-        icon_label = QtWidgets.QLabel()
-        icon_label.setFixedSize(32, 32)
-        # Note: Make sure you have this icon in your resources
-        # icon_label.setPixmap(QtGui.QPixmap(":/assets/appointments_icon.png"))
-        icon_label.setStyleSheet("QLabel { background-color: #084924; border-radius: 8px; }")  # Placeholder
-        icon_label.setScaledContents(True)
-        
-        # Title
-        title_label = QtWidgets.QLabel("Appointment Purpose")
+        title_label = QtWidgets.QLabel("Appointment Request Details")
         title_label.setStyleSheet("""
             QLabel {
                 color: #084924;
-                font: 600 20pt 'Poppins';
-                background: transparent;
+                font: 600 18pt 'Poppins';
             }
         """)
+        title_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title_label)
         
-        header_layout.addWidget(icon_label)
-        header_layout.addSpacing(12)
-        header_layout.addWidget(title_label)
-        header_layout.addStretch(1)
-        
-        content_layout.addWidget(header_widget)
-        
-        # Separator
-        separator = QtWidgets.QFrame()
-        separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-        separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        separator.setStyleSheet("QFrame { background-color: #e0e0e0; }")
-        separator.setFixedHeight(1)
-        content_layout.addWidget(separator)
-        
-        # Appointment info section
-        info_group = QtWidgets.QGroupBox("Appointment Information")
-        info_group.setStyleSheet("""
+        summary_group = QtWidgets.QGroupBox("Appointment Summary")
+        summary_group.setStyleSheet("""
             QGroupBox {
                 font: 600 12pt 'Poppins';
                 color: #084924;
@@ -596,10 +609,32 @@ class StudentRequestPage_ui(QWidget):
             }
         """)
         
+        summary_layout = QtWidgets.QFormLayout(summary_group)
+        summary_layout.setVerticalSpacing(8)
+        summary_layout.setHorizontalSpacing(20)
         
+        faculty_name = self.selected_faculty["name"]
+        day_of_week = self.selected_schedule_entry.get('day_of_week', '')
+        start_time = self.selected_schedule_entry.get('start_time', '')
+        end_time = self.selected_schedule_entry.get('end_time', '')
+        date = self.selected_date
         
-        # REASON SECTION - NEW
-        reason_group = QtWidgets.QGroupBox("Reason")
+        summary_data = [
+            ("Faculty:", faculty_name),
+            ("Date:", f"{day_of_week}, {date}"),
+            ("Time:", f"{start_time} - {end_time}"),
+        ]
+        
+        for label, value in summary_data:
+            label_widget = QtWidgets.QLabel(label)
+            label_widget.setStyleSheet("QLabel { font: 600 11pt 'Poppins'; color: #333; }")
+            value_widget = QtWidgets.QLabel(value)
+            value_widget.setStyleSheet("QLabel { font: 11pt 'Poppins'; color: #666; }")
+            summary_layout.addRow(label_widget, value_widget)
+        
+        layout.addWidget(summary_group)
+        
+        reason_group = QtWidgets.QGroupBox("Appointment Purpose")
         reason_group.setStyleSheet("""
             QGroupBox {
                 font: 600 12pt 'Poppins';
@@ -609,18 +644,12 @@ class StudentRequestPage_ui(QWidget):
                 margin-top: 12px;
                 padding-top: 12px;
             }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 12px;
-                padding: 0 8px 0 8px;
-            }
         """)
         
         reason_layout = QtWidgets.QVBoxLayout(reason_group)
         
-        # Text edit for reason input
         self.reason_text_edit = QtWidgets.QTextEdit()
-        self.reason_text_edit.setPlaceholderText("Enter your reason here...")
+        self.reason_text_edit.setPlaceholderText("Please describe the purpose of your appointment...")
         self.reason_text_edit.setFixedHeight(120)
         self.reason_text_edit.setStyleSheet("""
             QTextEdit {
@@ -635,13 +664,11 @@ class StudentRequestPage_ui(QWidget):
                 background-color: white;
             }
         """)
-        
         reason_layout.addWidget(self.reason_text_edit)
-        content_layout.addWidget(reason_group)
+        layout.addWidget(reason_group)
         
-        # UPLOAD FILE SECTION - NEW
-        upload_group = QtWidgets.QGroupBox("Upload File")
-        upload_group.setStyleSheet("""
+        location_group = QtWidgets.QGroupBox("Meeting Location")
+        location_group.setStyleSheet("""
             QGroupBox {
                 font: 600 12pt 'Poppins';
                 color: #084924;
@@ -650,131 +677,34 @@ class StudentRequestPage_ui(QWidget):
                 margin-top: 12px;
                 padding-top: 12px;
             }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 12px;
-                padding: 0 8px 0 8px;
-            }
         """)
         
-        upload_layout = QtWidgets.QVBoxLayout(upload_group)
+        location_layout = QtWidgets.QVBoxLayout(location_group)
         
-        # File info display
-        self.file_info_widget = QtWidgets.QWidget()
-        file_info_layout = QtWidgets.QHBoxLayout(self.file_info_widget)
-        file_info_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.file_name_label = QtWidgets.QLabel("Sample.png")
-        self.file_name_label.setStyleSheet("QLabel { font: 11pt 'Poppins'; color: #333; }")
-        
-        self.file_progress_label = QtWidgets.QLabel("50%")
-        self.file_progress_label.setStyleSheet("QLabel { font: 11pt 'Poppins'; color: #666; }")
-        
-        file_info_layout.addWidget(self.file_name_label)
-        file_info_layout.addStretch(1)
-        file_info_layout.addWidget(self.file_progress_label)
-        
-        upload_layout.addWidget(self.file_info_widget)
-        
-        # Upload button
-        self.upload_button = QtWidgets.QPushButton("Upload Now")
-        self.upload_button.setFixedHeight(40)
-        self.upload_button.setStyleSheet("""
-            QPushButton {
-                background-color: #084924;
-                color: white;
-                border-radius: 8px;
-                font: 600 12pt 'Poppins';
-            }
-            QPushButton:hover {
-                background-color: #0a5a2f;
-            }
-        """)
-        self.upload_button.clicked.connect(self._handleFileUpload)
-        
-        upload_layout.addWidget(self.upload_button)
-        content_layout.addWidget(upload_group)
-        
-        # Image preview section (initially hidden)
-        self.image_preview_group = QtWidgets.QGroupBox("Image Preview")
-        self.image_preview_group.setStyleSheet("""
-            QGroupBox {
-                font: 600 12pt 'Poppins';
-                color: #084924;
+        self.location_combo = QtWidgets.QComboBox()
+        self.location_combo.addItems([
+            "Faculty Office",
+            "Online Meeting",
+            "Classroom",
+            "Laboratory",
+            "Other (specify in purpose)"
+        ])
+        self.location_combo.setStyleSheet("""
+            QComboBox {
                 border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 12px;
-                padding-top: 12px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 12px;
-                padding: 0 8px 0 8px;
-            }
-        """)
-        
-        image_preview_layout = QtWidgets.QVBoxLayout(self.image_preview_group)
-        
-        # Image display
-        self.image_display = QtWidgets.QLabel()
-        self.image_display.setFixedSize(400, 200)
-        self.image_display.setStyleSheet("""
-            QLabel {
-                background-color: #f8f9fa;
-                border: 2px dashed #dee2e6;
-                border-radius: 8px;
-            }
-        """)
-        self.image_display.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.image_display.setText("No image selected")
-        self.image_display.setStyleSheet("""
-            QLabel {
-                background-color: #f8f9fa;
-                border: 2px dashed #dee2e6;
-                border-radius: 8px;
-                color: #6c757d;
-                font: 10pt 'Poppins';
-            }
-        """)
-        
-        # Image controls
-        image_controls_layout = QtWidgets.QHBoxLayout()
-        
-        self.view_btn = QtWidgets.QPushButton("View Full Size")
-        self.view_btn.setFixedSize(120, 35)
-        self.view_btn.clicked.connect(self._viewImageFullSize)
-        self.view_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2F80ED;
-                color: white;
                 border-radius: 6px;
-                font: 600 10pt 'Poppins';
-            }
-            QPushButton:hover {
-                background-color: #2a75e0;
+                padding: 8px;
+                font: 11pt 'Poppins';
+                background-color: #fafafa;
             }
         """)
-        self.view_btn.setEnabled(False)  # Disabled until image is loaded
+        location_layout.addWidget(self.location_combo)
+        layout.addWidget(location_group)
         
-        image_controls_layout.addWidget(self.view_btn)
-        image_controls_layout.addStretch(1)
+        layout.addStretch(1)
         
-        image_preview_layout.addWidget(self.image_display)
-        image_preview_layout.addLayout(image_controls_layout)
+        button_layout = QtWidgets.QHBoxLayout()
         
-        content_layout.addWidget(self.image_preview_group)
-        self.image_preview_group.hide()  # Hide initially
-        
-        # Add some spacing before the buttons
-        content_layout.addStretch(1)
-        
-        # Button row (this stays fixed at the bottom)
-        button_widget = QtWidgets.QWidget()
-        button_widget.setStyleSheet("QWidget { background: white; }")
-        button_layout = QtWidgets.QHBoxLayout(button_widget)
-        button_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Cancel and Submit buttons
         cancel_button = QtWidgets.QPushButton("Cancel")
         cancel_button.setFixedSize(120, 40)
         cancel_button.setStyleSheet("""
@@ -790,8 +720,8 @@ class StudentRequestPage_ui(QWidget):
         """)
         cancel_button.clicked.connect(dialog.reject)
         
-        submit_button = QtWidgets.QPushButton("Submit")
-        submit_button.setFixedSize(120, 40)
+        submit_button = QtWidgets.QPushButton("Submit Request")
+        submit_button.setFixedSize(140, 40)
         submit_button.setStyleSheet("""
             QPushButton {
                 background-color: #084924;
@@ -803,124 +733,79 @@ class StudentRequestPage_ui(QWidget):
                 background-color: #0a5a2f;
             }
         """)
-        submit_button.clicked.connect(self._handleSubmit)
+        submit_button.clicked.connect(lambda: self._handleSubmitRequest(dialog))
         
         button_layout.addStretch(1)
         button_layout.addWidget(cancel_button)
         button_layout.addWidget(submit_button)
         
-        content_layout.addWidget(button_widget)
+        layout.addLayout(button_layout)
         
-        # Set the scroll content
-        scroll_area.setWidget(scroll_content)
-        
-        # Add scroll area to main layout
-        main_layout.addWidget(scroll_area)
-        
-        # Store dialog reference for use in methods
-        self.purpose_dialog = dialog
-        
-        # Show the dialog
         dialog.exec()
 
-    def _handleFileUpload(self):
-        """Handle file upload button click"""
-        file_dialog = QtWidgets.QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(
-            self.purpose_dialog,
-            "Select Image File",
-            "",
-            "Image Files (*.png *.jpg *.jpeg *.bmp *.gif)"
-        )
-        
-        if file_path:
-            # Update file info
-            file_name = file_path.split('/')[-1]
-            self.file_name_label.setText(file_name)
-            self.file_progress_label.setText("100%")
-            
-            # Load and display image
-            pixmap = QtGui.QPixmap(file_path)
-            if not pixmap.isNull():
-                # Scale pixmap to fit display area while maintaining aspect ratio
-                scaled_pixmap = pixmap.scaled(
-                    self.image_display.width(), 
-                    self.image_display.height(),
-                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
-                    QtCore.Qt.TransformationMode.SmoothTransformation
-                )
-                self.image_display.setPixmap(scaled_pixmap)
-                self.image_display.setText("")
-                self.view_btn.setEnabled(True)
-                
-                # Store full size pixmap for full-size viewing
-                self.full_size_pixmap = pixmap
-                
-                # Show preview section
-                self.image_preview_group.show()
-            else:
-                QtWidgets.QMessageBox.warning(
-                    self.purpose_dialog,
-                    "Invalid Image",
-                    "The selected file is not a valid image file."
-                )
-
-    def _viewImageFullSize(self):
-        """Show image in full size dialog"""
-        if hasattr(self, 'full_size_pixmap') and not self.full_size_pixmap.isNull():
-            image_dialog = QtWidgets.QDialog()
-            image_dialog.setWindowTitle("Image Preview")
-            image_dialog.setModal(True)
-            image_dialog.resize(800, 600)
-            
-            layout = QtWidgets.QVBoxLayout(image_dialog)
-            
-            image_label = QtWidgets.QLabel()
-            image_label.setPixmap(self.full_size_pixmap)
-            image_label.setScaledContents(True)
-            
-            scroll_area = QtWidgets.QScrollArea()
-            scroll_area.setWidgetResizable(True)
-            scroll_area.setWidget(image_label)
-            
-            close_button = QtWidgets.QPushButton("Close")
-            close_button.clicked.connect(image_dialog.accept)
-            
-            layout.addWidget(scroll_area)
-            layout.addWidget(close_button)
-            
-            image_dialog.exec()
-
-    def _handleSubmit(self):
-        """Handle submit button click"""
+    def _handleSubmitRequest(self, dialog):
+        """Handle the appointment request submission"""
         reason_text = self.reason_text_edit.toPlainText().strip()
+        location = self.location_combo.currentText()
         
         if not reason_text:
-            QtWidgets.QMessageBox.warning(
-                self.purpose_dialog,
+            QMessageBox.warning(
+                dialog,
                 "Missing Information",
-                "Please enter a reason before submitting."
+                "Please enter the purpose of your appointment before submitting."
             )
             return
         
-        # Here you would typically process the form data
-        # For example: save reason text and handle the uploaded file
-        
-        print(f"Reason: {reason_text}")
-        if hasattr(self, 'full_size_pixmap'):
-            print("Image uploaded successfully")
-        
-        
-        self.purpose_dialog.accept()
-        self._showScheduleUpdatedDialog()
-        
+        try:
+            student_id = self._get_current_student_id()
+            if not student_id:
+                QMessageBox.warning(dialog, "Error", "Student profile not found.")
+                return
+                
+            result = self.Appointment_crud.create_appointment(
+                student_id=student_id,
+                schedule_entry_id=self.selected_schedule_entry["id"],
+                details=reason_text,
+                address=location,
+                date_str=self.selected_date,
+                image_path=""
+            )
+            
+            if result:
+                dialog.accept()
+                self._showSuccessDialog()
+            else:
+                QMessageBox.warning(dialog, "Error", "Failed to create appointment request.")
+                
+        except Exception as e:
+            print(f"Error creating appointment: {e}")
+            QMessageBox.warning(dialog, "Error", f"Failed to create appointment: {str(e)}")
 
-    def _showScheduleUpdatedDialog(self):
-        """Show a success dialog when schedule is updated"""
+    def _get_current_student_id(self):
+        """Get the current student's ID"""
+        students = self.Appointment_crud.list_students()
+        for student in students:
+            if student.get('email') == self.username or student.get('name') == self.username:
+                return student.get('id')
+        
+        try:
+            student_id = self.Appointment_crud.create_student(
+                name=self.username,
+                email=self.username,
+                course="Unknown",
+                year_level="Unknown"
+            )
+            return student_id
+        except Exception as e:
+            print(f"Error creating student: {e}")
+            return None
+
+    def _showSuccessDialog(self):
+        """Show success dialog"""
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Success")
         dialog.setModal(True)
-        dialog.setFixedSize(300, 150)
+        dialog.setFixedSize(350, 200)
         dialog.setStyleSheet("""
             QDialog {
                 background-color: white;
@@ -928,13 +813,25 @@ class StudentRequestPage_ui(QWidget):
             }
         """)
         
-        # Main layout
         layout = QtWidgets.QVBoxLayout(dialog)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        layout.setSpacing(20)
         
-        # Success message
-        message_label = QtWidgets.QLabel("Faculty has been requested!")
+        icon_label = QtWidgets.QLabel()
+        icon_label.setFixedSize(64, 64)
+        icon_label.setStyleSheet("""
+            QLabel {
+                background-color: #4CAF50;
+                border-radius: 32px;
+                color: white;
+                font: bold 24pt 'Poppins';
+                qproperty-alignment: AlignCenter;
+            }
+        """)
+        icon_label.setText("✓")
+        layout.addWidget(icon_label, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
+        
+        message_label = QtWidgets.QLabel("Appointment Request Submitted!")
         message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         message_label.setStyleSheet("""
             QLabel {
@@ -944,7 +841,12 @@ class StudentRequestPage_ui(QWidget):
         """)
         layout.addWidget(message_label)
         
-        # OK button
+        info_label = QtWidgets.QLabel("Your request is pending faculty approval.\nYou will be notified once it's processed.")
+        info_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        info_label.setStyleSheet("QLabel { font: 11pt 'Poppins'; color: #666; }")
+        info_label.setWordWrap(True)
+        layout.addWidget(info_label)
+        
         ok_button = QtWidgets.QPushButton("OK")
         ok_button.setFixedHeight(40)
         ok_button.setStyleSheet("""
@@ -963,13 +865,11 @@ class StudentRequestPage_ui(QWidget):
         
         layout.addWidget(ok_button)
         
-        # Show the dialog
         dialog.exec()
+
     def retranslateUi(self):
-        self.label_29.setText("Shapi Dot Com")
+        self.label_29.setText("Select a Faculty")
         self.label_30.setText("Select Date & Time")
         self.label_31.setText("Available Slots")
-        self.button_4.setText("Request")
-        self.FacultyListPage.setText("Request")
-        
-    
+        self.button_4.setText("Request Appointment")
+        self.FacultyListPage.setText("Request Appointment")
