@@ -1,50 +1,14 @@
 [
   {
     "student_id": 13,
-    "appointment_schedule_entry_id": 1,
-    "additional_details": "saasfadasd",
-    "address": "Faculty Office",
-    "status": "pending",
-    "appointment_date": "2025-11-05",
-    "created_at": "2025-10-08 20:41:12.840203",
-    "updated_at": "2025-10-08 20:41:12.840222",
-    "image_path": "",
-    "id": 1
-  },
-  {
-    "student_id": 1,
-    "appointment_schedule_entry_id": 7,
-    "additional_details": "Consultation about project",
-    "address": "Room 305",
-    "status": "pending",
-    "appointment_date": "2025-10-08",
-    "created_at": "2025-10-08 21:50:30.105786",
-    "updated_at": "2025-10-08 21:50:30.105803",
-    "image_path": "Uploads/consultation.png",
-    "id": 2
-  },
-  {
-    "student_id": 13,
-    "appointment_schedule_entry_id": 5,
-    "additional_details": "dsad",
-    "address": "Other (specify in purpose)",
-    "status": "pending",
-    "appointment_date": "2025-10-27",
-    "created_at": "2025-10-08 22:31:57.713551",
-    "updated_at": "2025-10-08 22:31:57.713563",
-    "image_path": "",
-    "id": 3
-  },
-  {
-    "student_id": 13,
-    "appointment_schedule_entry_id": 7,
-    "additional_details": "cxvxc",
+    "appointment_schedule_entry_id": 8,
+    "additional_details": "sdfsdf",
     "address": "Faculty Office",
     "status": "approved",
-    "appointment_date": "2025-11-17",
-    "created_at": "2025-10-08 22:34:40.906544",
-    "updated_at": "2025-10-08 22:36:36.511652",
+    "appointment_date": "2025-10-06",
+    "created_at": "2025-10-08 22:43:18.301479",
+    "updated_at": "2025-10-08 22:46:26.100274",
     "image_path": "",
-    "id": 4
+    "id": 1
   }
 ]

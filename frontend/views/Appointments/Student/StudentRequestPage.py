@@ -18,7 +18,8 @@ class StudentRequestPage_ui(QWidget):
         self.selected_schedule_entry = None
         self.selected_date = None
         self.slot_buttons = []
-        self.slots_container = None  # New: Dedicated container for slots
+        self.slots_container = None
+        self.available_days = set()  # Store available days for highlighting
         self.setFixedSize(1000, 550)
         self._setupStudentRequestPage()
         self.retranslateUi()
@@ -28,6 +29,7 @@ class StudentRequestPage_ui(QWidget):
         self.selected_faculty = faculty_data
         self._updateFacultyInfo()
         self._loadAvailableSlots()
+        self._updateCalendarHighlighting()  # Update calendar highlighting
         self._onDateSelected()
 
     def _updateFacultyInfo(self):
@@ -44,18 +46,56 @@ class StudentRequestPage_ui(QWidget):
             return
             
         try:
-            
             # Get active block and entries
             active_block = self.Appointment_crud.get_active_block(self.selected_faculty["id"])
             
             if active_block and "error" not in active_block:
                 self.block_entries = self.Appointment_crud.get_block_entries(active_block["id"])
-
+                
+                # Extract available days from block entries
+                self._extractAvailableDays()
                 
         except Exception as e:
             print(f"Error loading available slots: {e}")
             QMessageBox.warning(self, "Error", f"Failed to load available slots: {str(e)}")
             self._showNoSlotsMessage()
+
+    def _extractAvailableDays(self):
+        """Extract available days from block entries for calendar highlighting"""
+        self.available_days.clear()
+        
+        if not hasattr(self, 'block_entries') or not self.block_entries:
+            return
+            
+        # Map day names to numbers (Monday=1, Sunday=7)
+        day_mapping = {
+            "Monday": 1, "Tuesday": 2, "Wednesday": 3, 
+            "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7
+        }
+        
+        for entry in self.block_entries:
+            day_name = entry.get('day_of_week', '')
+            if day_name in day_mapping:
+                self.available_days.add(day_mapping[day_name])
+        
+        print(f"Available days: {self.available_days}")
+
+    def _updateCalendarHighlighting(self):
+        """Update calendar to highlight available days"""
+        if not self.available_days:
+            return
+            
+        # Create a text char format for available days
+        available_format = QtGui.QTextCharFormat()
+        available_format.setBackground(QtGui.QBrush(QtGui.QColor("#FFF9C4")))  # Light yellow
+        available_format.setForeground(QtGui.QBrush(QtGui.QColor("#000000")))  # Black text
+        
+        # Apply the format to available days
+        for day_number in self.available_days:
+            self.calendarWidget.setWeekdayTextFormat(
+                QtCore.Qt.DayOfWeek(day_number), 
+                available_format
+            )
 
     def _showNoSlotsMessage(self):
         """Show message when no slots are available"""
@@ -82,8 +122,6 @@ class StudentRequestPage_ui(QWidget):
         if hasattr(self, 'button_4') and self.button_4:
             self.button_4.setEnabled(False)
 
-
-
     def _updateCalendarForSelectedDay(self, day_of_week):
         """Update calendar to highlight the selected day"""
         try:
@@ -108,6 +146,7 @@ class StudentRequestPage_ui(QWidget):
             print(f"Error updating calendar: {e}")
 
     def _loadTheEntries(self, day):
+        """Load available entries for the selected day"""
         day_entries = []
         unavailble_entry_index = []
 
@@ -119,30 +158,22 @@ class StudentRequestPage_ui(QWidget):
         for i in range(len(day_entries)):
             date_appointments = self.Appointment_crud.get_appointments_by_entry_and_date(day_entries[i].get('id'), self.selected_date)
             if date_appointments:
-                # print(f"Completed or Accpeted Appointments: {date_appointments}")
                 unavailble_entry_index.append(i)
         
-        # print(f"{day} Entries: {day_entries}")
-        # print(f"Unvailable Entry Indexes: {unavailble_entry_index}")
-
         try: 
             for btn in self.slot_buttons:
                 btn.deleteLater()
             self.slot_buttons.clear()
                 
-                # Clear the slots container content
+            # Clear the slots container content
             if hasattr(self, "slots_container") and self.slots_container is not None:
                 self.slots_container.deleteLater()
                 self.slots_container = None
                 self.slots_layout = None
 
-                    
-            print(day_entries)
             if day_entries:
                 # Ensure slots_container and slots_layout exist
-                print("1")
                 if not self.slots_container:
-                    print("1.5")
                     self.slots_container = QtWidgets.QWidget()
                     self.slots_layout = QtWidgets.QVBoxLayout(self.slots_container)
                     self.slots_layout.setContentsMargins(5, 5, 5, 5)
@@ -171,47 +202,47 @@ class StudentRequestPage_ui(QWidget):
                         """)
                     slots_scroll.setWidget(self.slots_container)
                         
-                        # Replace old scroll area with new one
+                    # Replace old scroll area with new one
                     old_widget = self.availableSlot.layout().itemAt(0)
                     if old_widget and old_widget.widget():
                         old_widget.widget().deleteLater()
                     self.availableSlot.layout().insertWidget(0, slots_scroll)
                     
-                    # Populate slot buttons
-                for entry in day_entries:
-                    print("day")
+                # Populate slot buttons
+                for i in range(len(day_entries)):
+                    entry = day_entries[i]
                     start_time = entry.get('start_time', '')
                     end_time = entry.get('end_time', '')
-                    # day_of_week = entry.get('day_of_week', '')
                         
                     slot_text = f"{start_time} - {end_time}"
-                        
+                    
+                    self.button_4.setEnabled(False)
                     btn = QtWidgets.QPushButton(slot_text)
                     btn.setFixedHeight(45)
                     btn.setCheckable(True)
                     btn.setProperty("schedule_entry_id", entry["id"])
-                    # btn.setProperty("day_of_week", day_of_week)
                     btn.setProperty("start_time", start_time)
                     btn.setProperty("end_time", end_time)
                     btn.setStyleSheet(self.slot_style(default=True))
                     btn.clicked.connect(lambda checked, b=btn, e=entry: self.select_slot(b, e))
+                    
+                    if (i in unavailble_entry_index):      
+                        print("U")
+                        btn.setEnabled(False)
+                    
                     self.slots_layout.addWidget(btn)
                     self.slot_buttons.append(btn)
                     
                 self.slots_layout.addStretch(1)
                     
                 if self.slot_buttons:
-                    print("2")
                     self.slot_buttons[0].setChecked(True)
                     self.slot_buttons[0].setStyleSheet(self.slot_style(selected=True))
                     self.selected_schedule_entry = day_entries[0]
-                    # self._updateCalendarForSelectedDay(day_entries[0].get('day_of_week', ''))
                 else:
                     self.selected_schedule_entry = None
-                    print("3")
                     self._showNoSlotsMessage()
             else:
-                print("4")
                 self._showNoSlotsMessage()
                 
         except Exception as e:
@@ -538,9 +569,6 @@ class StudentRequestPage_ui(QWidget):
         self.selected_date = self.calendarWidget.selectedDate().toString('yyyy-MM-dd')
         selected_day = self.calendarWidget.selectedDate().toString('dddd')
         self._loadTheEntries(selected_day)
-        # print(f"Selected day: {selected_day}")
-        # return selected_day
-
 
     def slot_style(self, default=False, selected=False):
         if selected:
@@ -555,7 +583,13 @@ class StudentRequestPage_ui(QWidget):
             }
             QPushButton:hover {
                 background-color: #0a5a2f;
-            }"""
+            }
+            QPushButton:disabled {
+                background-color: #bfbfbf;
+                color: #6f6f6f;
+                border: 2px solid #a0a0a0;
+            }
+            """
         else:
             return """
             QPushButton {
@@ -572,6 +606,11 @@ class StudentRequestPage_ui(QWidget):
             QPushButton:pressed { 
                 background-color: #e0f0e8; 
             }
+            QPushButton:disabled {
+                background-color: #bfbfbf;
+                color: #6f6f6f;
+                border: 2px solid #a0a0a0;
+            }
             """
 
     def select_slot(self, button, schedule_entry):
@@ -583,14 +622,8 @@ class StudentRequestPage_ui(QWidget):
         button.setStyleSheet(self.slot_style(selected=True))
         self.selected_schedule_entry = schedule_entry
         
-        day_of_week = schedule_entry.get('day_of_week', '')
-        self._updateCalendarForSelectedDay(day_of_week)
-        
-        # Safely enable button_4 if it exists
         if hasattr(self, 'button_4') and self.button_4 and not self.button_4.isHidden():
             self.button_4.setEnabled(True)
-        
-        print(f"Selected schedule: {day_of_week} {schedule_entry['start_time']} - {schedule_entry['end_time']}")
 
     def _showRequestDialog(self):
         """Show request dialog to collect appointment details"""

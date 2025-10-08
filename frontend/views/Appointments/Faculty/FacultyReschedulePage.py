@@ -1,7 +1,8 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QFormLayout, QCheckBox, QLineEdit, QPushButton
+from PyQt6.QtWidgets import QWidget, QMessageBox , QVBoxLayout, QLabel, QHBoxLayout, QFormLayout, QCheckBox, QLineEdit, QPushButton
 from .appointment_crud import appointment_crud
 import logging
+from datetime import datetime
 
 # Set up logging for debugging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,9 +19,12 @@ class FacultyReschedulePage_ui(QWidget):
         self.crud = appointment_crud()
         self.faculty_id = self._get_faculty_id()
         self.selected_appointment_id = None  # To be set externally
+        self.available_days = set()  # Store available days for highlighting
+        self.slot_buttons = []  # Initialize slot_buttons here
         self._setupFacultyReschedulePage()
         self.retranslateUi()
         self._load_appointment_details()
+        self._loadAvailableSlots()  # Load available slots for calendar highlighting
         self.setFixedSize(1000, 550)
 
     def _get_faculty_id(self):
@@ -44,6 +48,62 @@ class FacultyReschedulePage_ui(QWidget):
             logging.debug(f"Loaded appointment: {appointment}")
             # Update UI with appointment details if needed (e.g., display in a label)
             self.subtitle.setText(f"Reschedule Appointment - {appointment.get('appointment_date', 'N/A')}")
+
+    def _loadAvailableSlots(self):
+        """Load available time slots for the faculty and extract available days for calendar highlighting"""
+        try:
+            # Get active block and entries
+            active_block = self.crud.get_active_block(self.faculty_id)
+            
+            if active_block and "error" not in active_block:
+                self.block_entries = self.crud.get_block_entries(active_block["id"])
+                
+                # Extract available days from block entries for calendar highlighting
+                self._extractAvailableDays()
+                
+        except Exception as e:
+            print(f"Error loading available slots: {e}")
+            logging.error(f"Failed to load available slots: {str(e)}")
+
+    def _extractAvailableDays(self):
+        """Extract available days from block entries for calendar highlighting"""
+        self.available_days.clear()
+        
+        if not hasattr(self, 'block_entries') or not self.block_entries:
+            return
+            
+        # Map day names to numbers (Monday=1, Sunday=7)
+        day_mapping = {
+            "Monday": 1, "Tuesday": 2, "Wednesday": 3, 
+            "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7
+        }
+        
+        for entry in self.block_entries:
+            day_name = entry.get('day_of_week', '')
+            if day_name in day_mapping:
+                self.available_days.add(day_mapping[day_name])
+        
+        logging.debug(f"Available days for faculty: {self.available_days}")
+        
+        # Update calendar highlighting
+        self._updateCalendarHighlighting()
+
+    def _updateCalendarHighlighting(self):
+        """Update calendar to highlight available days"""
+        if not self.available_days:
+            return
+            
+        # Create a text char format for available days
+        available_format = QtGui.QTextCharFormat()
+        available_format.setBackground(QtGui.QBrush(QtGui.QColor("#FFF9C4")))  # Light yellow
+        available_format.setForeground(QtGui.QBrush(QtGui.QColor("#000000")))  # Black text
+        
+        # Apply the format to available days
+        for day_number in self.available_days:
+            self.calendarWidget.setWeekdayTextFormat(
+                QtCore.Qt.DayOfWeek(day_number), 
+                available_format
+            )
 
     def _setupFacultyReschedulePage(self):
         self.setObjectName("facultyreschedule")
@@ -137,7 +197,7 @@ class FacultyReschedulePage_ui(QWidget):
         month_header.setFont(font)
         month_header.setStyleSheet("QLabel { color: #084924; }")
         month_header.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        month_header.setText("October 2025")  # Updated to current month
+        month_header.setText(datetime.now().strftime("%B %Y"))
         left_layout.addWidget(month_header)
 
         days_widget = QtWidgets.QWidget()
@@ -158,16 +218,65 @@ class FacultyReschedulePage_ui(QWidget):
         self.calendarWidget = QtWidgets.QCalendarWidget()
         self.calendarWidget.setVerticalHeaderFormat(QtWidgets.QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         self.calendarWidget.setHorizontalHeaderFormat(QtWidgets.QCalendarWidget.HorizontalHeaderFormat.NoHorizontalHeader)
-        self.calendarWidget.setSelectedDate(QtCore.QDate.currentDate())  # Set to today: 2025-10-08
+        self.calendarWidget.setSelectedDate(QtCore.QDate.currentDate())
         self.calendarWidget.setStyleSheet("""
-            QCalendarWidget { background: #ffffff; border: none; font: 10pt 'Poppins'; }
-            QCalendarWidget QWidget#qt_calendar_navigationbar { background: transparent; border: none; margin: 10px; }
-            QCalendarWidget QToolButton { background: transparent; color: #084924; font: bold 12pt 'Poppins'; border: none; padding: 5px; }
-            QCalendarWidget QToolButton:hover { color: #0a5a2f; }
-            QCalendarWidget QToolButton#qt_calendar_prevmonth { qproperty-icon: url(:/assets/arrow_left.png); icon-size: 16px; }
-            QCalendarWidget QToolButton#qt_calendar_nextmonth { qproperty-icon: url(:/assets/arrow_right.png); icon-size: 16px; }
-            QCalendarWidget QAbstractItemView:enabled { color: #084924; selection-background-color: #084924; selection-color: white; }
-            QCalendarWidget QAbstractItemView:disabled { color: #cccccc; }
+            QCalendarWidget { 
+                background: #ffffff; 
+                border: 1px solid #e0e0e0;
+                border-radius: 10px;
+                font: 10pt 'Poppins';
+            }
+            QCalendarWidget QWidget#qt_calendar_navigationbar { 
+                background: transparent; 
+                border: none; 
+                margin: 10px; 
+            }
+            QCalendarWidget QToolButton { 
+                background: transparent; 
+                color: #084924; 
+                font: bold 12pt 'Poppins'; 
+                border: none; 
+                padding: 5px; 
+            }
+            QCalendarWidget QToolButton:hover { 
+                color: #0a5a2f; 
+            }
+            QCalendarWidget QToolButton#qt_calendar_prevmonth { 
+                qproperty-icon: url(:/assets/arrow_left.png); 
+                icon-size: 16px; 
+            }
+            QCalendarWidget QToolButton#qt_calendar_nextmonth { 
+                qproperty-icon: url(:/assets/arrow_right.png); 
+                icon-size: 16px; 
+            }
+            QCalendarWidget QToolButton#qt_calendar_monthbutton,
+            QCalendarWidget QToolButton#qt_calendar_yearbutton {
+                font: bold 12pt 'Poppins';
+                color: #084924;
+            }
+            QCalendarWidget QTableView {
+                selection-background-color: transparent;
+                selection-color: black;
+            }
+            QCalendarWidget QHeaderView::section {
+                background: transparent;
+                color: #084924;
+                font: 600 10pt 'Poppins';
+                border: none;
+                padding: 6px 0;
+            }
+            QCalendarWidget QAbstractItemView:enabled { 
+                color: #084924; 
+                font: 10pt 'Poppins';
+                background: white;
+                selection-background-color: #084924; 
+                selection-color: white; 
+                border-radius: 20px;
+                outline: none;
+            }
+            QCalendarWidget QAbstractItemView:disabled { 
+                color: #cccccc; 
+            }
         """)
         calendar_layout.addWidget(self.calendarWidget)
         left_layout.addWidget(self.calendarCard, 1)
@@ -184,24 +293,52 @@ class FacultyReschedulePage_ui(QWidget):
         right_layout.addWidget(self.label_31)
 
         self.availableSlot = QtWidgets.QFrame()
-        self.availableSlot.setStyleSheet("background: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px;")
+        self.availableSlot.setStyleSheet("""
+            QFrame#availableSlot { 
+                background: #ffffff; 
+                border: 1px solid #e0e0e0; 
+                border-radius: 10px;
+            }
+        """)
+        self.availableSlot.setObjectName("availableSlot")
         available_layout = QtWidgets.QVBoxLayout(self.availableSlot)
-        available_layout.setContentsMargins(0, 0, 0, 0)
+        available_layout.setContentsMargins(15, 15, 15, 15)
         available_layout.setSpacing(10)
 
-        self.slots_layout = QtWidgets.QHBoxLayout()
-        self.slots_layout.setSpacing(12)
-        self.slot_buttons = []
-        available_layout.addLayout(self.slots_layout)
+        # Initial message
+        self.initial_message = QtWidgets.QLabel("Select a date to view available slots")
+        self.initial_message.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.initial_message.setStyleSheet("""
+            QLabel {
+                font: 12pt 'Poppins';
+                color: #666666;
+                background: #f8f9fa;
+                border-radius: 8px;
+                padding: 20px;
+            }
+        """)
+        available_layout.addWidget(self.initial_message)
 
         self.button_4 = QtWidgets.QPushButton("Reschedule")
         self.button_4.setFixedHeight(50)
         self.button_4.setFont(QtGui.QFont("Poppins", 14, QtGui.QFont.Weight.Bold))
         self.button_4.setStyleSheet("""
-            QPushButton { background-color: #084924; border-radius: 8px; color: white; font: 600 14pt 'Poppins'; }
-            QPushButton:hover { background-color: #0a5a2f; }
+            QPushButton { 
+                background-color: #084924; 
+                border-radius: 8px; 
+                color: white; 
+                font: 600 14pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #0a5a2f; 
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
         """)
         self.button_4.clicked.connect(self._openRescheduleDialog)
+        self.button_4.setEnabled(False)
         available_layout.addWidget(self.button_4)
 
         right_layout.addWidget(self.availableSlot, 1)
@@ -209,53 +346,174 @@ class FacultyReschedulePage_ui(QWidget):
         content_layout.addWidget(right_widget, 1)
         widget_layout.addWidget(content_widget, 1)
         reschedule_layout.addWidget(self.widget_3, 1)
+        
+        # Connect calendar selection change
         self.calendarWidget.selectionChanged.connect(self._updateAvailableSlots)
 
     def resizeEvent(self, event):
         """Adjust slot buttons and calendar size dynamically."""
-        width = self.availableSlot.width()
-        num_slots = max(1, len(self.slot_buttons))
-        for btn in self.slot_buttons:
-            btn.setFixedWidth(int(width / min(num_slots, 3)) - 12)
+        # Only resize if there are slot buttons
+        if hasattr(self, 'slot_buttons') and self.slot_buttons:
+            width = self.availableSlot.width()
+            num_slots = max(1, len(self.slot_buttons))
+            for btn in self.slot_buttons:
+                btn.setFixedWidth(int(width / min(num_slots, 3)) - 12)
+        
+        # Set minimum calendar size
         self.calendarWidget.setMinimumSize(int(self.widget_3.width() * 0.45), 300)
         super().resizeEvent(event)
 
     def _updateAvailableSlots(self):
+        """Update available slots when date is selected"""
         date = self.calendarWidget.selectedDate()
+        
+        # Clear existing slot buttons
         for btn in self.slot_buttons:
             btn.deleteLater()
         self.slot_buttons.clear()
+        
+        # Clear the available slot area except the button
+        layout = self.availableSlot.layout()
+        for i in reversed(range(layout.count())):
+            widget = layout.itemAt(i).widget()
+            if widget and widget != self.button_4 and widget != self.initial_message:
+                widget.deleteLater()
+        
+        # Hide initial message
+        self.initial_message.hide()
+        
+        # Get active block and entries
         block = self.crud.get_active_block(self.faculty_id)
         if "error" in block:
             logging.warning("No active block found")
+            no_slots_label = QtWidgets.QLabel("No available time slots")
+            no_slots_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            no_slots_label.setStyleSheet("""
+                QLabel {
+                    font: 12pt 'Poppins';
+                    color: #666666;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    padding: 20px;
+                }
+            """)
+            layout.insertWidget(0, no_slots_label)
+            self.button_4.setEnabled(False)
             return
+        
         entries = self.crud.get_block_entries(block["id"])
         day_name = date.toString("dddd")
         slots = [e for e in entries if e["day_of_week"] == day_name]
+        
+        if not slots:
+            no_slots_label = QtWidgets.QLabel(f"No available slots for {day_name}")
+            no_slots_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            no_slots_label.setStyleSheet("""
+                QLabel {
+                    font: 12pt 'Poppins';
+                    color: #666666;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    padding: 20px;
+                }
+            """)
+            layout.insertWidget(0, no_slots_label)
+            self.button_4.setEnabled(False)
+            return
+        
+        # Create scroll area for slots
+        slots_scroll = QtWidgets.QScrollArea()
+        slots_scroll.setWidgetResizable(True)
+        slots_scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        slots_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        slots_scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                background: #f0f0f0;
+                width: 8px;
+                margin: 0px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #c0c0c0;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+        """)
+        
+        slots_container = QtWidgets.QWidget()
+        slots_layout = QtWidgets.QVBoxLayout(slots_container)
+        slots_layout.setContentsMargins(5, 5, 5, 5)
+        slots_layout.setSpacing(8)
+        
         for slot in slots:
             time_text = f"{slot['start_time']} - {slot['end_time']}"
             btn = QtWidgets.QPushButton(time_text)
             btn.setFixedHeight(45)
             btn.setCheckable(True)
+            btn.setProperty("schedule_entry_id", slot["id"])
             btn.setStyleSheet(self.slot_style(default=True))
             btn.clicked.connect(lambda checked, b=btn: self.select_slot(b))
-            self.slots_layout.addWidget(btn)
+            slots_layout.addWidget(btn)
             self.slot_buttons.append(btn)
+        
+        slots_layout.addStretch(1)
+        slots_scroll.setWidget(slots_container)
+        layout.insertWidget(0, slots_scroll)
+        
         if self.slot_buttons:
             self.slot_buttons[0].setChecked(True)
             self.slot_buttons[0].setStyleSheet(self.slot_style(selected=True))
+            self.button_4.setEnabled(True)
+        else:
+            self.button_4.setEnabled(False)
 
     def slot_style(self, default=False, selected=False):
         """Style for slot buttons."""
         if selected:
             return """
-            QPushButton { background-color: #084924; color: white; border: 2px solid #084924; border-radius: 8px; padding: 10px 20px; font: 600 11pt 'Poppins'; }
+            QPushButton { 
+                background-color: #084924; 
+                color: white; 
+                border: 2px solid #084924; 
+                border-radius: 8px; 
+                padding: 10px 20px; 
+                font: 600 11pt 'Poppins'; 
+            }
+            QPushButton:hover {
+                background-color: #0a5a2f;
+            }
+            QPushButton:disabled {
+                background-color: #bfbfbf;
+                color: #6f6f6f;
+                border: 2px solid #a0a0a0;
+            }
             """
-        return """
-        QPushButton { background-color: #ffffff; color: #333333; border: 2px solid #084924; border-radius: 8px; padding: 10px 20px; font: 600 11pt 'Poppins'; }
-        QPushButton:hover { background-color: #f0f7f3; }
-        QPushButton:pressed { background-color: #e0f0e8; }
-        """
+        else:
+            return """
+            QPushButton { 
+                background-color: #ffffff; 
+                color: #333333; 
+                border: 2px solid #084924; 
+                border-radius: 8px; 
+                padding: 10px 20px; 
+                font: 600 11pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #f0f7f3; 
+            }
+            QPushButton:pressed { 
+                background-color: #e0f0e8; 
+            }
+            QPushButton:disabled {
+                background-color: #bfbfbf;
+                color: #6f6f6f;
+                border: 2px solid #a0a0a0;
+            }
+            """
 
     def select_slot(self, button):
         """Handle slot button selection."""
@@ -264,124 +522,161 @@ class FacultyReschedulePage_ui(QWidget):
             btn.setStyleSheet(self.slot_style(default=True))
         button.setChecked(True)
         button.setStyleSheet(self.slot_style(selected=True))
+        self.button_4.setEnabled(True)
 
     def _openRescheduleDialog(self):
         """Open dialog to confirm rescheduling."""
         if not self.selected_appointment_id:
             logging.warning("No selected appointment ID for rescheduling")
+            QMessageBox.warning(self, "Warning", "No appointment selected for rescheduling.")
             return
-        selected_slot = next((btn.text() for btn in self.slot_buttons if btn.isChecked()), None)
-        if not selected_slot:
+        
+        selected_slot_btn = next((btn for btn in self.slot_buttons if btn.isChecked()), None)
+        if not selected_slot_btn:
             logging.warning("No slot selected for rescheduling")
+            QMessageBox.warning(self, "Warning", "Please select a time slot.")
             return
-        dlg = QtWidgets.QDialog()
+        
+        selected_slot = selected_slot_btn.text()
+        selected_date = self.calendarWidget.selectedDate().toString('yyyy-MM-dd')
+        
+        dlg = QtWidgets.QDialog(self)
         dlg.setWindowTitle("Reschedule Appointment")
         dlg.setModal(True)
-        dlg.setMinimumSize(420, 210)
+        dlg.setFixedSize(450, 220)
+        dlg.setStyleSheet("QDialog { background-color: white; border-radius: 12px; }")
+        
         root = QtWidgets.QVBoxLayout(dlg)
         root.setContentsMargins(24, 24, 24, 24)
-        root.setSpacing(14)
+        root.setSpacing(20)
 
-        title = QtWidgets.QLabel(f"Reschedule to {selected_slot} on {self.calendarWidget.selectedDate().toString('yyyy-MM-dd')}?")
-        title.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
-        title.setStyleSheet("QLabel { color: #2b2b2b; font: 600 12pt 'Poppins'; }")
+        title = QtWidgets.QLabel(f"Reschedule to {selected_slot} on {selected_date}?")
+        title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("QLabel { color: #2b2b2b; font: 600 14pt 'Poppins'; }")
+        title.setWordWrap(True)
         root.addWidget(title)
+
         root.addStretch(1)
 
         btn_row = QtWidgets.QHBoxLayout()
         btn_cancel = QtWidgets.QPushButton("Cancel")
-        btn_confirm = QtWidgets.QPushButton("Confirm")
-        btn_cancel.setStyleSheet("QPushButton { background: #e0e0e0; border-radius: 6px; padding: 6px 16px; font: 10pt 'Poppins'; color: #2b2b2b; }")
-        btn_confirm.setStyleSheet("QPushButton { background: #084924; border-radius: 6px; padding: 6px 16px; font: 10pt 'Poppins'; color: white; }")
+        btn_confirm = QtWidgets.QPushButton("Confirm Reschedule")
+        
+        btn_cancel.setStyleSheet("""
+            QPushButton {
+                background: #e0e0e0;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font: 600 11pt 'Poppins';
+                color: #2b2b2b;
+            }
+            QPushButton:hover {
+                background: #d0d0d0;
+            }
+        """)
+        
+        btn_confirm.setStyleSheet("""
+            QPushButton {
+                background: #084924;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font: 600 11pt 'Poppins';
+                color: white;
+            }
+            QPushButton:hover {
+                background: #0a5a2f;
+            }
+        """)
+        
         btn_cancel.clicked.connect(dlg.reject)
+        
         def _confirm_clicked():
-            block = self.crud.get_active_block(self.faculty_id)
-            if "error" not in block:
-                entries = self.crud.get_block_entries(block["id"])
-                day_name = self.calendarWidget.selectedDate().toString("dddd")
-                entry = next((e for e in entries if e["day_of_week"] == day_name and f"{e['start_time']} - {e['end_time']}" == selected_slot), None)
-                if entry:
-                    appointments = self.crud.get_faculty_appointments(self.faculty_id)
-                    current_appointment = next((a for a in appointments if a["id"] == self.selected_appointment_id), None)
-                    if current_appointment and current_appointment.get("status") in ["pending", "approved"]:
-                        self.crud.update_appointment(self.selected_appointment_id, {
-                            "appointment_schedule_entry_id": entry["id"],
-                            "appointment_date": self.calendarWidget.selectedDate().toString("yyyy-MM-dd"),
-                            "status": "rescheduled"
-                        })
-                        self._showSuccessDialog()
+            try:
+                schedule_entry_id = selected_slot_btn.property("schedule_entry_id")
+                if not schedule_entry_id:
+                    logging.error("No schedule entry ID found for selected slot")
+                    QMessageBox.warning(dlg, "Error", "Invalid time slot selected.")
+                    return
+                
+                appointments = self.crud.get_faculty_appointments(self.faculty_id)
+                current_appointment = next((a for a in appointments if a["id"] == self.selected_appointment_id), None)
+                
+                if current_appointment and current_appointment.get("status") in ["pending", "approved"]:
+                    result = self.crud.update_appointment(self.selected_appointment_id, {
+                        "appointment_schedule_entry_id": schedule_entry_id,
+                        "appointment_date": selected_date,
+                        "status": "rescheduled"
+                    })
+                    
+                    if result:
+                        self._showSuccessDialog("Appointment rescheduled successfully!")
                         dlg.accept()
+                        self.back.emit()  # Go back to previous page
                     else:
-                        logging.warning(f"Cannot reschedule appointment {self.selected_appointment_id}: Invalid status")
+                        QMessageBox.warning(dlg, "Error", "Failed to reschedule appointment.")
+                else:
+                    QMessageBox.warning(dlg, "Error", "Cannot reschedule this appointment. Invalid status.")
+                    
+            except Exception as e:
+                logging.error(f"Error rescheduling appointment: {str(e)}")
+                QMessageBox.warning(dlg, "Error", f"Failed to reschedule appointment: {str(e)}")
+        
         btn_confirm.clicked.connect(_confirm_clicked)
+        
         btn_row.addWidget(btn_cancel)
         btn_row.addStretch(1)
         btn_row.addWidget(btn_confirm)
         root.addLayout(btn_row)
+        
         dlg.exec()
 
-    def _openDenyDialog(self):
-        """Open dialog to confirm denying reschedule request."""
-        if not self.selected_appointment_id:
-            logging.warning("No selected appointment ID for denying")
-            return
-        dlg = QtWidgets.QDialog()
-        dlg.setWindowTitle("Deny Reschedule")
-        dlg.setModal(True)
-        dlg.setMinimumSize(420, 210)
-        root = QtWidgets.QVBoxLayout(dlg)
-        root.setContentsMargins(24, 24, 24, 24)
-        root.setSpacing(14)
-
-        title = QtWidgets.QLabel("Are you sure you want to deny this reschedule request?")
-        title.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter)
-        title.setStyleSheet("QLabel { color: #2b2b2b; font: 600 12pt 'Poppins'; }")
-        root.addWidget(title)
-        root.addStretch(1)
-
-        btn_row = QtWidgets.QHBoxLayout()
-        btn_cancel = QtWidgets.QPushButton("Cancel")
-        btn_deny = QtWidgets.QPushButton("Deny")
-        btn_cancel.setStyleSheet("QPushButton { background: #e0e0e0; border-radius: 6px; padding: 6px 16px; font: 10pt 'Poppins'; color: #2b2b2b; }")
-        btn_deny.setStyleSheet("QPushButton { background: #EB5757; border-radius: 6px; padding: 6px 16px; font: 10pt 'Poppins'; color: white; }")
-        btn_cancel.clicked.connect(dlg.reject)
-        def _confirm_clicked():
-            appointments = self.crud.get_faculty_appointments(self.faculty_id)
-            current_appointment = next((a for a in appointments if a["id"] == self.selected_appointment_id), None)
-            if current_appointment and current_appointment.get("status") in ["pending", "approved"]:
-                self.crud.update_appointment(self.selected_appointment_id, {"status": "denied"})
-                self._showSuccessDialog(message="Reschedule request denied!")
-                dlg.accept()
-            else:
-                logging.warning(f"Cannot deny appointment {self.selected_appointment_id}: Invalid status")
-        btn_deny.clicked.connect(_confirm_clicked)
-        btn_row.addWidget(btn_cancel)
-        btn_row.addStretch(1)
-        btn_row.addWidget(btn_deny)
-        root.addLayout(btn_row)
-        dlg.exec()
-
-    def _showSuccessDialog(self, message="Appointment rescheduled successfully!"):
-        """Show success dialog after rescheduling or denying."""
-        dialog = QtWidgets.QDialog()
+    def _showSuccessDialog(self, message="Operation completed successfully!"):
+        """Show success dialog after rescheduling."""
+        dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Success")
         dialog.setModal(True)
-        dialog.setMinimumSize(300, 150)
+        dialog.setFixedSize(350, 200)
         dialog.setStyleSheet("QDialog { background-color: white; border-radius: 10px; }")
+        
         layout = QtWidgets.QVBoxLayout(dialog)
         layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
+        
+        icon_label = QtWidgets.QLabel()
+        icon_label.setFixedSize(64, 64)
+        icon_label.setStyleSheet("""
+            QLabel {
+                background-color: #4CAF50;
+                border-radius: 32px;
+                color: white;
+                font: bold 24pt 'Poppins';
+                qproperty-alignment: AlignCenter;
+            }
+        """)
+        icon_label.setText("✓")
+        layout.addWidget(icon_label, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
+        
         message_label = QtWidgets.QLabel(message)
         message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         message_label.setStyleSheet("QLabel { color: #084924; font: 600 14pt 'Poppins'; }")
         layout.addWidget(message_label)
+        
         ok_button = QtWidgets.QPushButton("OK")
         ok_button.setFixedHeight(40)
         ok_button.setStyleSheet("""
-            QPushButton { background-color: #084924; color: white; border-radius: 8px; font: 600 12pt 'Poppins'; }
-            QPushButton:hover { background-color: #0a5a2f; }
+            QPushButton { 
+                background-color: #084924; 
+                color: white; 
+                border-radius: 8px; 
+                font: 600 12pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #0a5a2f; 
+            }
         """)
         ok_button.clicked.connect(dialog.accept)
         layout.addWidget(ok_button)
+        
         dialog.exec()
 
     def retranslateUi(self):

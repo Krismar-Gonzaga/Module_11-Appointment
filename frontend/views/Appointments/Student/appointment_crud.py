@@ -111,7 +111,7 @@ class appointment_crud:
             a for a in appointments
             if a["appointment_schedule_entry_id"] == schedule_entry_id
             and a["appointment_date"] == date_str
-            and a["status"] in ["completed", "accepted"]
+            and a["status"] in ["completed", "approved"]
         ]
 
     # ===========================

@@ -116,9 +116,10 @@ class StudentBrowseFaculty_ui(QWidget):
         self.refreshButton.setFixedSize(100, 35)
         self.refreshButton.setStyleSheet("""
             QPushButton {
-                background-color: #2F80ED;
+                background-color: #084924;
                 color: white;
                 border-radius: 8px;
+                margin-right: 10px;
                 font: 10pt 'Poppins';
             }
             QPushButton:hover {
@@ -272,6 +273,7 @@ class StudentBrowseFaculty_ui(QWidget):
         
         for i in range(start_index, end_index):
             faculty = self.faculties[i]
+            print(faculty)
             position = i - start_index
             row = position // 3
             col = position % 3
@@ -346,23 +348,39 @@ class StudentBrowseFaculty_ui(QWidget):
         dept_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(dept_label)
         
+
         request_button = QPushButton(faculty["role"])
-        request_button.setFixedSize(120, 40)
-        request_button.setStyleSheet("""
-            QPushButton {
-                background-color: #084924;
-                color: white;
-                border-radius: 8px;
-                font: bold 12pt 'Poppins';
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #0a5a2f;
-            }
-            QPushButton:pressed {
-                background-color: #063818;
-            }
-        """)
+        request_button.setFixedSize(230, 40)
+        active_block = self.Appointment_crud.get_active_block(faculty["id"])
+        if active_block and "error" not in active_block:
+            request_button.setEnabled(True)
+            request_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #084924;
+                    color: white;
+                    border-radius: 8px;
+                    font: bold 12pt 'Poppins';
+                    border: none;
+                }
+                QPushButton:hover {
+                    background-color: #0a5a2f;
+                }
+                QPushButton:pressed {
+                    background-color: #063818;
+                }
+            """)
+        else:
+            request_button.setEnabled(False)
+            request_button.setToolTip("No available schedule")
+            request_button.setText("No available schedule")
+            request_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #E0E0E0;
+                    color: black;
+                    border-radius: 8px;
+                }
+            """)
+        
         request_button.clicked.connect(lambda checked, f=faculty: self._onRequestClicked(f))
         
         button_container = QtWidgets.QWidget()
