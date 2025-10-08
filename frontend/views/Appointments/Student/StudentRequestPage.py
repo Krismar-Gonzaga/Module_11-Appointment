@@ -5,6 +5,7 @@ from datetime import datetime
 
 class StudentRequestPage_ui(QWidget):
     back = QtCore.pyqtSignal()
+    backrefreshdata = QtCore.pyqtSignal()
     
     def __init__(self, username, roles, primary_role, token, parent=None):
         super().__init__(parent)
@@ -18,7 +19,7 @@ class StudentRequestPage_ui(QWidget):
         self.selected_date = None
         self.slot_buttons = []
         self.slots_container = None  # New: Dedicated container for slots
-        
+        self.setFixedSize(1000, 550)
         self._setupStudentRequestPage()
         self.retranslateUi()
 
@@ -209,7 +210,7 @@ class StudentRequestPage_ui(QWidget):
         header_layout.addStretch(1)
 
         self.backbutton = QtWidgets.QPushButton("<- Back")
-        self.backbutton.clicked.connect(self.back)
+        self.backbutton.clicked.connect(self._handleBackButton)
         header_layout.addWidget(self.backbutton)
         
         self.backButton = QtWidgets.QLabel()
@@ -493,6 +494,12 @@ class StudentRequestPage_ui(QWidget):
 
         widget_layout.addWidget(content_widget, 1)
         reschedule_layout.addWidget(self.widget_3, 1)
+
+    def _handleBackButton(self):
+        """Handle back button click - emit both signals"""
+        print("Back button clicked - emitting signals")
+        self.back.emit()  # Signal to go back to previous page
+        self.backrefreshdata.emit()  # Signal to refresh data
 
     def _onDateSelected(self):
         """Handle date selection from calendar"""
@@ -860,12 +867,18 @@ class StudentRequestPage_ui(QWidget):
                 background-color: #0a5a2f;
             }
         """)
-        ok_button.clicked.connect(dialog.accept)
-        ok_button.clicked.connect(self.back)
+        ok_button.clicked.connect(lambda: self._handleSuccessDialogClose(dialog))
         
         layout.addWidget(ok_button)
         
         dialog.exec()
+
+    def _handleSuccessDialogClose(self, dialog):
+        """Handle success dialog close - emit refresh signal and close"""
+        print("Success dialog closed - emitting refresh signal")
+        self.backrefreshdata.emit()  # Emit refresh signal
+        dialog.accept()
+        self.back.emit()  # Also emit back signal to navigate back
 
     def retranslateUi(self):
         self.label_29.setText("Select a Faculty")

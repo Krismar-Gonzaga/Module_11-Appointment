@@ -13,7 +13,7 @@ class StudentEditSchedulePage_ui(QWidget):
         self.token = token
         self.Appointment_crud = appointment_crud()
         self._setupEditSchedulePage()
-        
+        self.setFixedSize(1000, 550)
         # Load current student's schedule if any
         self._loadCurrentSchedule()
 

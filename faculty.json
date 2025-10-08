@@ -1,8 +1,8 @@
 [
-    {
-        "id": 1,
-        "name": "Kim",
-        "email": "Kim@school.edu",
-        "department": "IT Department"
-    }
+  {
+    "id": 1,
+    "name": "Kim",
+    "email": "Kim@school.edu",
+    "department": "Sample Department"
+  }
 ]

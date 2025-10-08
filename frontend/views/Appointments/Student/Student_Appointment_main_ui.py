@@ -34,9 +34,45 @@ class Student_Ui_MainWindow(QWidget):
 
         # Initialize the UI
         self.setupUi(self)
+
+        self.setup_navigation()
         
         print(f"Ui_MainWindow: Initialized for user {username} with role {primary_role}")
+        # In your main window class
+    def setup_navigation(self):
+        # Create pages
+        self.student_appointment_page = StudentAppointmentPage_ui(
+            self.username, self.roles, self.primary_role, self.token
+        )
+        self.student_request_page = StudentRequestPage_ui(
+            self.username, self.roles, self.primary_role, self.token
+        )
+        
+        # Connect signals
+        self.student_appointment_page.go_to_AppointmentSchedulerPage.connect(
+            lambda: self.show_student_request_page()
+        )
+        
+        self.student_request_page.back.connect(
+            lambda: self.show_student_appointments_page()
+        )
+        
+        # Connect the refresh signal
+        self.student_request_page.backrefreshdata.connect(
+            self.student_appointment_page.refresh_appointments_data
+        )
+        
+        # Add to stacked widget
+        self.stackedWidget.addWidget(self.student_appointment_page)
+        self.stackedWidget.addWidget(self.student_request_page)
 
+    def show_student_appointments_page(self):
+        self.stackedWidget.setCurrentWidget(self.student_appointment_page)
+
+    def show_student_request_page(self, faculty_data=None):
+        if faculty_data:
+            self.student_request_page.set_faculty_data(faculty_data)
+        self.stackedWidget.setCurrentWidget(self.student_request_page)
     def setupUi(self, MainWindow):
         self._setupCentralWidget(MainWindow)
         self.stackedWidget.setCurrentIndex(0)

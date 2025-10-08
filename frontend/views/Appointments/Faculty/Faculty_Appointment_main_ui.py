@@ -28,6 +28,7 @@ class Ui_MainWindow(QWidget):
 
         # Set minimum size to ensure visibility
         self.setMinimumSize(800, 600)
+        
 
         self.AppointmentPage = AppointmentPage_ui(self.username, self.roles, self.primary_role, self.token)
         self.AppointmentSchedulerPage = AppointmentSchedulerPage_ui(self.username, self.roles, self.primary_role, self.token)
