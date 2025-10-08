@@ -106,10 +106,12 @@ class appointment_crud:
     def get_appointments_by_entry_and_date(self, schedule_entry_id, date_str):
         """Get all appointments matching entry and date."""
         appointments = self.appointments_db.read_all()
+        # print(f"{schedule_entry_id} {date_str}")
         return [
             a for a in appointments
             if a["appointment_schedule_entry_id"] == schedule_entry_id
             and a["appointment_date"] == date_str
+            and a["status"] in ["completed", "accepted"]
         ]
 
     # ===========================

@@ -4,5 +4,11 @@
         "name": "Kim",
         "email": "Kim@school.edu",
         "department": "IT Department"
+    },
+    {
+        "id": 2,
+        "name": "John Jones",
+        "email": "BonesJones@school.edu",
+        "department": "IT Department"
     }
 ]
