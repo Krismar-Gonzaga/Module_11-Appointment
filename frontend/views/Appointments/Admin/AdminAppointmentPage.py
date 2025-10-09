@@ -28,7 +28,7 @@ class AdminAppointmentPage_ui(QWidget):
         appointments_layout.setContentsMargins(10, 10, 10, 10)
         appointments_layout.setSpacing(15)
         appointments_layout.setObjectName("appointments_layout")
-        
+        # Appointments
         # Header section
         header_widget = QtWidgets.QWidget()
         header_layout = QtWidgets.QHBoxLayout(header_widget)
