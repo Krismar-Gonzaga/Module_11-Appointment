@@ -1,8 +1,10 @@
 from datetime import datetime
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMessageBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMessageBox, QFileDialog
 from .appointment_crud import appointment_crud
 from .StudentRequestPage import StudentRequestPage_ui
+import logging
+import os
 
 class StudentAppointmentPage_ui(QWidget):
     go_to_AppointmentSchedulerPage = QtCore.pyqtSignal()
@@ -378,7 +380,7 @@ class StudentAppointmentPage_ui(QWidget):
         item.setFont(QtGui.QFont("Poppins", 10, QtGui.QFont.Weight.DemiBold))
         return item
 
-    def _makePurposeViewCell(self, purpose_text):
+    def _makePurposeViewCell(self, purpose_text, appointment_data):
         """Create a clickable 'View' link for the purpose column"""
         container = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(container)
@@ -387,7 +389,7 @@ class StudentAppointmentPage_ui(QWidget):
         link = QtWidgets.QLabel("View", parent=container)
 
         def showPurposeDetails(event):
-            self._showPurposeDetailsDialog(purpose_text)
+            self._showPurposeDetailsDialog(purpose_text, appointment_data)
 
         link.mousePressEvent = showPurposeDetails
         font = QtGui.QFont()
@@ -437,45 +439,100 @@ class StudentAppointmentPage_ui(QWidget):
         layout.addStretch(1)
         return container
 
-    def _showPurposeDetailsDialog(self, purpose_text):
-        """Show a dialog with appointment details"""
-        dialog = QtWidgets.QDialog(self)
+    def _showPurposeDetailsDialog(self, purpose_text, appointment_data):
+        """Show an enhanced dialog with purpose details and appointment info"""
+        dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Appointment Details")
         dialog.setModal(True)
         dialog.setFixedSize(550, 600)
-        dialog.setStyleSheet("QDialog { background-color: white; border-radius: 12px; }")
-
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: white;
+                border-radius: 12px;
+            }
+        """)
+        
+        # Main layout for the dialog
         main_layout = QtWidgets.QVBoxLayout(dialog)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(20)
-
-        # Header
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Create scroll area
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: white;
+            }
+            QScrollBar:vertical {
+                background: #f0f0f0;
+                width: 12px;
+                margin: 0px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #c0c0c0;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #a0a0a0;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+        """)
+        
+        # Create scroll content widget
+        scroll_content = QtWidgets.QWidget()
+        scroll_content.setStyleSheet("QWidget { background: white; }")
+        
+        # Main content layout for scroll area
+        content_layout = QtWidgets.QVBoxLayout(scroll_content)
+        content_layout.setContentsMargins(24, 20, 24, 20)
+        content_layout.setSpacing(20)
+        
+        # Header with icon and title
         header_widget = QtWidgets.QWidget()
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
-
+        
+        # Icon
         icon_label = QtWidgets.QLabel()
         icon_label.setFixedSize(32, 32)
         icon_label.setStyleSheet("QLabel { background-color: #084924; border-radius: 8px; }")
         icon_label.setScaledContents(True)
-
-        title_label = QtWidgets.QLabel("Appointment Purpose")
-        title_label.setStyleSheet("QLabel { color: #084924; font: 600 20pt 'Poppins'; background: transparent; }")
+        
+        # Title
+        title_label = QtWidgets.QLabel("Appointment Details")
+        title_label.setStyleSheet("""
+            QLabel {
+                color: #084924;
+                font: 600 20pt 'Poppins';
+                background: transparent;
+            }
+        """)
+        
         header_layout.addWidget(icon_label)
         header_layout.addSpacing(12)
         header_layout.addWidget(title_label)
         header_layout.addStretch(1)
-        main_layout.addWidget(header_widget)
-
+        
+        content_layout.addWidget(header_widget)
+        
         # Separator
         separator = QtWidgets.QFrame()
         separator.setFrameShape(QtWidgets.QFrame.Shape.HLine)
         separator.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         separator.setStyleSheet("QFrame { background-color: #e0e0e0; }")
         separator.setFixedHeight(1)
-        main_layout.addWidget(separator)
-
-        # Appointment Information
+        content_layout.addWidget(separator)
+        
+        # Appointment info section
         info_group = QtWidgets.QGroupBox("Appointment Information")
         info_group.setStyleSheet("""
             QGroupBox {
@@ -492,47 +549,149 @@ class StudentAppointmentPage_ui(QWidget):
                 padding: 0 8px 0 8px;
             }
         """)
-
+        
         info_layout = QtWidgets.QFormLayout(info_group)
         info_layout.setVerticalSpacing(8)
         info_layout.setHorizontalSpacing(20)
-
-        selected_row = self.tableWidget_8.currentRow()
-        if selected_row >= 0 and selected_row < len(self.rows):
-            time_text, faculty, slot, _, status, appointment_id, student_id, schedule_entry, address, appointment_date, created_at, image_path = self.rows[selected_row]
-            appointment = self.Appointment_crud.appointments_db.read_by_id(appointment_id)
-            appointment_data = [
-                ("Student:", self.username),
-                ("Faculty:", faculty),
-                ("Date & Time:", time_text),
-                ("Duration:", "30 minutes"),
-                ("Status:", status),
-                ("Mode:", appointment.get('address', 'Online') if appointment else "Unknown"),
-                ("Meeting Link:", "https://meet.google.com/xyz-abc-def" if appointment and appointment.get('address') == "Online Meeting" else "N/A"),
-                ("Contact Email:", f"{self.username.lower().replace(' ', '.')}@university.edu")
-            ]
-        else:
-            appointment_data = [
-                ("Student:", "Unknown"),
-                ("Faculty:", "Unknown"),
-                ("Date & Time:", "Unknown"),
-                ("Duration:", "Unknown"),
-                ("Status:", "Unknown"),
-                ("Mode:", "Unknown"),
-                ("Meeting Link:", "Unknown"),
-                ("Contact Email:", "Unknown")
-            ]
-
-        for label, value in appointment_data:
+        
+        # Extract student info
+        student_info = self.Appointment_crud.list_students()
+        student_data = next((s for s in student_info if s.get('id') == appointment_data[6]), {})
+        
+        # Prepare appointment data
+        appointment_info = [
+            ("Student:", student_data.get('name', 'Unknown')),
+            ("Date & Time:", appointment_data[0]),
+            ("Duration:", "30 minutes"),  # Assuming default duration
+            ("Status:", appointment_data[4]),
+            ("Course:", student_data.get('course', 'Unknown')),
+            ("Year Level:", student_data.get('year_level', 'Unknown')),
+            ("Contact Email:", student_data.get('email', 'Unknown')),
+            ("Address:", appointment_data[8] or "Not specified"),
+            ("Created At:", appointment_data[10] or "Unknown"),
+        ]
+        
+        for label, value in appointment_info:
             label_widget = QtWidgets.QLabel(label)
             label_widget.setStyleSheet("QLabel { font: 600 11pt 'Poppins'; color: #333; }")
-            value_widget = QtWidgets.QLabel(value)
+            
+            value_widget = QtWidgets.QLabel(str(value))
             value_widget.setStyleSheet("QLabel { font: 11pt 'Poppins'; color: #666; }")
+            
             info_layout.addRow(label_widget, value_widget)
-
-        main_layout.addWidget(info_group)
-
-        # Purpose Details
+        
+        content_layout.addWidget(info_group)
+        
+        # Image View Section
+        image_group = QtWidgets.QGroupBox("Supporting Documents")
+        image_group.setStyleSheet("""
+            QGroupBox {
+                font: 600 12pt 'Poppins';
+                color: #084924;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 12px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 12px;
+                padding: 0 8px 0 8px;
+            }
+        """)
+        
+        image_layout = QtWidgets.QVBoxLayout(image_group)
+        
+        # Image display area
+        self.image_display = QtWidgets.QLabel()
+        self.image_display.setFixedSize(400, 200)
+        self.image_display.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        
+        # Load image if available
+        image_path = appointment_data[11]
+        print(appointment_data)
+        print(image_path)
+        if image_path and os.path.exists(image_path):
+            pixmap = QtGui.QPixmap(image_path)
+            if not pixmap.isNull():
+                scaled_pixmap = pixmap.scaled(400, 200, 
+                                            QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                                            QtCore.Qt.TransformationMode.SmoothTransformation)
+                self.image_display.setPixmap(scaled_pixmap)
+                self.image_display.setStyleSheet("""
+                    QLabel {
+                        background-color: #f8f9fa;
+                        border: 2px solid #dee2e6;
+                        border-radius: 8px;
+                    }
+                """)
+            else:
+                self.image_display.setText("Invalid image")
+                self.image_display.setStyleSheet("""
+                    QLabel {
+                        background-color: #f8f9fa;
+                        border: 2px dashed #dee2e6;
+                        border-radius: 8px;
+                        color: #6c757d;
+                        font: 10pt 'Poppins';
+                    }
+                """)
+        else:
+            self.image_display.setText("No image available")
+            self.image_display.setStyleSheet("""
+                QLabel {
+                    background-color: #f8f9fa;
+                    border: 2px dashed #dee2e6;
+                    border-radius: 8px;
+                    color: #6c757d;
+                    font: 10pt 'Poppins';
+                }
+            """)
+        
+        # Image controls
+        image_controls_layout = QtWidgets.QHBoxLayout()
+        
+        upload_btn = QtWidgets.QPushButton("Upload Image")
+        upload_btn.setFixedSize(120, 35)
+        upload_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #084924;
+                color: white;
+                border-radius: 6px;
+                font: 600 10pt 'Poppins';
+            }
+            QPushButton:hover {
+                background-color: #0a5a2f;
+            }
+        """)
+        upload_btn.clicked.connect(lambda: self._uploadImage(appointment_data[5]))
+        
+        view_btn = QtWidgets.QPushButton("View Full Size")
+        view_btn.setFixedSize(120, 35)
+        view_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2F80ED;
+                color: white;
+                border-radius: 6px;
+                font: 600 10pt 'Poppins';
+            }
+            QPushButton:hover {
+                background-color: #2a75e0;
+            }
+        """)
+        view_btn.setEnabled(bool(image_path and os.path.exists(image_path)))
+        view_btn.clicked.connect(lambda: self._viewImageFullscreen(image_path))
+        
+        image_controls_layout.addWidget(upload_btn)
+        image_controls_layout.addWidget(view_btn)
+        image_controls_layout.addStretch(1)
+        
+        image_layout.addWidget(self.image_display)
+        image_layout.addLayout(image_controls_layout)
+        
+        content_layout.addWidget(image_group)
+        
+        # Purpose section
         purpose_group = QtWidgets.QGroupBox("Purpose Details")
         purpose_group.setStyleSheet("""
             QGroupBox {
@@ -549,38 +708,56 @@ class StudentAppointmentPage_ui(QWidget):
                 padding: 0 8px 0 8px;
             }
         """)
-
+        
         purpose_layout = QtWidgets.QVBoxLayout(purpose_group)
-        purpose_label = QtWidgets.QLabel(purpose_text or "No purpose provided")
+        
+        purpose_label = QtWidgets.QLabel(purpose_text)
         purpose_label.setWordWrap(True)
-        purpose_label.setStyleSheet("QLabel { color: #2b2b2b; font: 11pt 'Poppins'; background: transparent; line-height: 1.5; }")
-        purpose_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
-
-        purpose_scroll_area = QtWidgets.QScrollArea()
-        purpose_scroll_area.setWidgetResizable(True)
-        purpose_scroll_area.setWidget(purpose_label)
-        purpose_scroll_area.setStyleSheet("""
-            QScrollArea { border: none; background: transparent; }
-            QScrollBar:vertical {
-                background: #f0f0f0;
-                width: 8px;
-                margin: 0px;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:vertical {
-                background: #c0c0c0;
-                border-radius: 4px;
-                min-height: 20px;
+        purpose_label.setStyleSheet("""
+            QLabel {
+                color: #2b2b2b;
+                font: 11pt 'Poppins';
+                background: transparent;
+                line-height: 1.5;
             }
         """)
-
-        purpose_layout.addWidget(purpose_scroll_area, 1)
-        main_layout.addWidget(purpose_group, 1)
-
-        # OK Button
-        ok_button = QtWidgets.QPushButton("OK")
-        ok_button.setFixedSize(120, 40)
-        ok_button.setStyleSheet("""
+        purpose_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
+        
+        purpose_scroll_area = QtWidgets.QScrollArea()
+        purpose_scroll_area.setWidgetResizable(True)
+        purpose_scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        purpose_scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        purpose_scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: 1px solid #f0f0f0;
+                border-radius: 6px;
+                background: #fafafa;
+            }
+        """)
+        purpose_scroll_area.setFixedHeight(150)
+        
+        purpose_scroll_content = QtWidgets.QWidget()
+        purpose_scroll_layout = QtWidgets.QVBoxLayout(purpose_scroll_content)
+        purpose_scroll_layout.setContentsMargins(12, 12, 12, 12)
+        purpose_scroll_layout.addWidget(purpose_label)
+        
+        purpose_scroll_area.setWidget(purpose_scroll_content)
+        purpose_layout.addWidget(purpose_scroll_area)
+        
+        content_layout.addWidget(purpose_group)
+        
+        # Add spacing before button
+        content_layout.addStretch(1)
+        
+        # Button row
+        button_widget = QtWidgets.QWidget()
+        button_widget.setStyleSheet("QWidget { background: white; }")
+        button_layout = QtWidgets.QHBoxLayout(button_widget)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        
+        close_button = QtWidgets.QPushButton("Close")
+        close_button.setFixedSize(120, 40)
+        close_button.setStyleSheet("""
             QPushButton {
                 background-color: #084924;
                 color: white;
@@ -591,14 +768,102 @@ class StudentAppointmentPage_ui(QWidget):
                 background-color: #0a5a2f;
             }
         """)
-        ok_button.clicked.connect(dialog.accept)
-
-        button_layout = QtWidgets.QHBoxLayout()
+        close_button.clicked.connect(dialog.accept)
+        
         button_layout.addStretch(1)
-        button_layout.addWidget(ok_button)
-        main_layout.addLayout(button_layout)
-
+        button_layout.addWidget(close_button)
+        
+        content_layout.addWidget(button_widget)
+        
+        # Set the scroll content
+        scroll_area.setWidget(scroll_content)
+        
+        # Add scroll area to main layout
+        main_layout.addWidget(scroll_area)
+        
         dialog.exec()
+
+    def _uploadImage(self, appointment_id):
+        """Handle image upload for an appointment"""
+        try:
+            file_dialog = QFileDialog(self)
+            file_dialog.setNameFilter("Images (*.png *.jpg *.jpeg *.bmp)")
+            file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+            if file_dialog.exec():
+                selected_files = file_dialog.selectedFiles()
+                if selected_files:
+                    image_path = selected_files[0]
+                    # Update appointment with new image path
+                    self.Appointment_crud.update_appointment(appointment_id, {
+                        "image_path": image_path,
+                        "updated_at": str(datetime.now())
+                    })
+                    self.load_appointments_data()
+                    QMessageBox.information(self, "Success", "Image uploaded successfully!")
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to upload image: {str(e)}")
+
+    def _viewImageFullscreen(self, image_path):
+        """Show image in fullscreen dialog"""
+        try:
+            if not image_path or not os.path.exists(image_path):
+                QtWidgets.QMessageBox.warning(self, "Error", "No valid image available")
+                return
+                
+            fullscreen_dialog = QtWidgets.QDialog(self)
+            fullscreen_dialog.setWindowTitle("Image View")
+            fullscreen_dialog.setModal(True)
+            fullscreen_dialog.resize(800, 600)
+            fullscreen_dialog.setStyleSheet("QDialog { background-color: black; }")
+            
+            layout = QtWidgets.QVBoxLayout(fullscreen_dialog)
+            layout.setContentsMargins(0, 0, 0, 0)
+            
+            # Image label
+            pixmap = QtGui.QPixmap(image_path)
+            if not pixmap.isNull():
+                # Scale to fit screen while maintaining aspect ratio
+                screen_geometry = QtWidgets.QApplication.primaryScreen().availableGeometry()
+                max_width = screen_geometry.width() - 100
+                max_height = screen_geometry.height() - 100
+                
+                scaled_pixmap = pixmap.scaled(max_width, max_height, 
+                                            QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                                            QtCore.Qt.TransformationMode.SmoothTransformation)
+                
+                image_label = QtWidgets.QLabel()
+                image_label.setPixmap(scaled_pixmap)
+                image_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                image_label.setStyleSheet("QLabel { background-color: black; }")
+                
+                layout.addWidget(image_label)
+            
+            # Close button
+            close_button = QtWidgets.QPushButton("Close")
+            close_button.setFixedSize(100, 30)
+            close_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #d32f2f;
+                    color: white;
+                    border-radius: 4px;
+                    font: 600 10pt 'Poppins';
+                }
+                QPushButton:hover {
+                    background-color: #b71c1c;
+                }
+            """)
+            close_button.clicked.connect(fullscreen_dialog.accept)
+            
+            button_layout = QtWidgets.QHBoxLayout()
+            button_layout.addStretch(1)
+            button_layout.addWidget(close_button)
+            button_layout.addStretch(1)
+            layout.addLayout(button_layout)
+            
+            fullscreen_dialog.exec()
+            
+        except Exception as e:
+            QtWidgets.QMessageBox.warning(self, "Error", f"Could not load image: {str(e)}")
 
     def _openCancelDialog(self, row_index):
         """Open confirmation dialog for canceling an appointment"""
@@ -675,11 +940,12 @@ class StudentAppointmentPage_ui(QWidget):
         }
 
         self.tableWidget_8.setRowCount(len(self.rows))
-        for r, (time_text, faculty, slot, purpose, status, appointment_id, student_id, schedule_entry, address, appointment_date, created_at, image_path) in enumerate(self.rows):
+        for r, row_data in enumerate(self.rows):
+            time_text, faculty, slot, purpose, status, appointment_id, student_id, schedule_entry, address, appointment_date, created_at, image_path = row_data
             self.tableWidget_8.setItem(r, 0, QtWidgets.QTableWidgetItem(time_text))
             self.tableWidget_8.setItem(r, 1, QtWidgets.QTableWidgetItem(faculty))
             self.tableWidget_8.setItem(r, 2, QtWidgets.QTableWidgetItem(slot))
-            self.tableWidget_8.setCellWidget(r, 3, self._makePurposeViewCell(purpose))
+            self.tableWidget_8.setCellWidget(r, 3, self._makePurposeViewCell(purpose, row_data))
             self.tableWidget_8.setItem(r, 4, self._makeStatusItem(status, status_colors.get(status, "#333333")))
             self.tableWidget_8.setCellWidget(r, 5, self._makeActionsCell(status, r))
             self.tableWidget_8.setRowHeight(r, 60)
@@ -703,9 +969,7 @@ class StudentAppointmentPage_ui(QWidget):
     def showEvent(self, event):
         """Override showEvent to refresh data when the page is shown"""
         super().showEvent(event)
-        # Refresh data when page becomes visible
         self.load_appointments_data()
-        
 
 if __name__ == "__main__":
     import sys

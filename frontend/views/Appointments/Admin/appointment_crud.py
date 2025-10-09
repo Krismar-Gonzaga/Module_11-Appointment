@@ -21,6 +21,10 @@ class appointment_crud:
             "email": email,
             "department": department
         })
+    def get_student_by_id(self,student_id):
+
+        student = self.student_db.read_by_id(student_id)
+        return student
 
     def list_faculty(self):
         """Return all faculty records."""
@@ -164,6 +168,9 @@ class appointment_crud:
             "updated_at": str(datetime.now()),
             "image_path": image_path
         })
+    
+    def get_all_appointments(self):
+        return self.appointments_db.read_all()
 
 # ===========================
 # SAMPLE USAGE

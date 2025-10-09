@@ -54,5 +54,47 @@
     "end_time": "11:00",
     "day_of_week": "Monday",
     "id": 8
+  },
+  {
+    "schedule_block_entry_id": 5,
+    "start_time": "08:00",
+    "end_time": "08:30",
+    "day_of_week": "Monday",
+    "id": 9
+  },
+  {
+    "schedule_block_entry_id": 5,
+    "start_time": "09:00",
+    "end_time": "09:30",
+    "day_of_week": "Monday",
+    "id": 10
+  },
+  {
+    "schedule_block_entry_id": 5,
+    "start_time": "10:00",
+    "end_time": "10:30",
+    "day_of_week": "Monday",
+    "id": 11
+  },
+  {
+    "schedule_block_entry_id": 6,
+    "start_time": "08:00",
+    "end_time": "08:30",
+    "day_of_week": "Monday",
+    "id": 12
+  },
+  {
+    "schedule_block_entry_id": 6,
+    "start_time": "09:00",
+    "end_time": "09:30",
+    "day_of_week": "Monday",
+    "id": 13
+  },
+  {
+    "schedule_block_entry_id": 6,
+    "start_time": "10:00",
+    "end_time": "10:30",
+    "day_of_week": "Monday",
+    "id": 14
   }
 ]

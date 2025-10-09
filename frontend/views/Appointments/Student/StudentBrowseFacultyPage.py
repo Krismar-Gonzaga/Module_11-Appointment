@@ -1,5 +1,5 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox, QLineEdit
 from .appointment_crud import appointment_crud
 
 class StudentBrowseFaculty_ui(QWidget):
@@ -18,6 +18,7 @@ class StudentBrowseFaculty_ui(QWidget):
         self.current_page = 0
         self.items_per_page = 6
         self.faculties = []
+        self.filtered_faculties = []
         self.setFixedSize(1000, 550)
         self._setupBrowseFacultyPage()
         self.load_faculties_data()
@@ -49,6 +50,8 @@ class StudentBrowseFaculty_ui(QWidget):
                         "role": "Request"
                     })
             
+            # Initialize filtered faculties with all faculties
+            self.filtered_faculties = self.faculties.copy()
             self._populateFacultiesGrid()
             
         except Exception as e:
@@ -62,6 +65,7 @@ class StudentBrowseFaculty_ui(QWidget):
                 {"id": 5, "name": "Dr. Wilson", "email": "wilson@university.edu", "department": "Biology", "role": "Request"},
                 {"id": 6, "name": "Prof. Taylor", "email": "taylor@university.edu", "department": "Engineering", "role": "Request"},
             ]
+            self.filtered_faculties = self.faculties.copy()
             self._populateFacultiesGrid()
 
     def _create_sample_faculties(self):
@@ -158,6 +162,9 @@ class StudentBrowseFaculty_ui(QWidget):
         faculties_layout.setContentsMargins(0, 0, 0, 0)
         faculties_layout.setSpacing(15)
         
+        # Search bar section
+        self._setupSearchBar(faculties_layout)
+        
         faculties_header = QtWidgets.QLabel()
         faculties_header.setObjectName("faculties_header")
         faculties_header.setStyleSheet("""
@@ -205,6 +212,79 @@ class StudentBrowseFaculty_ui(QWidget):
         self._setupPaginationControls(faculties_layout)
         
         parent_layout.addWidget(faculties_container, 1)
+
+    def _setupSearchBar(self, parent_layout):
+        """Setup search bar with filter options"""
+        search_container = QtWidgets.QWidget()
+        search_layout = QtWidgets.QHBoxLayout(search_container)
+        search_layout.setContentsMargins(0, 0, 0, 0)
+        search_layout.setSpacing(10)
+        
+        # Search input
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search faculty by name, email, or department...")
+        self.search_input.setFixedHeight(40)
+        self.search_input.setStyleSheet("""
+            QLineEdit {
+                border: 2px solid #084924;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font: 11pt 'Poppins';
+                background-color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #0a5a2f;
+                background-color: #f8fff8;
+            }
+            QLineEdit::placeholder {
+                color: #999999;
+                font: 10pt 'Poppins';
+            }
+        """)
+        self.search_input.textChanged.connect(self._onSearchTextChanged)
+        
+        # Search button
+        self.search_button = QPushButton("Search")
+        self.search_button.setFixedSize(100, 40)
+        self.search_button.setStyleSheet("""
+            QPushButton {
+                background-color: #084924;
+                color: white;
+                border-radius: 8px;
+                font: 600 11pt 'Poppins';
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #0a5a2f;
+            }
+            QPushButton:pressed {
+                background-color: #063818;
+            }
+        """)
+        self.search_button.clicked.connect(self._performSearch)
+        
+        # Clear button
+        self.clear_button = QPushButton("Clear")
+        self.clear_button.setFixedSize(80, 40)
+        self.clear_button.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border-radius: 8px;
+                font: 600 11pt 'Poppins';
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #5a6268;
+            }
+        """)
+        self.clear_button.clicked.connect(self._clearSearch)
+        
+        search_layout.addWidget(self.search_input)
+        search_layout.addWidget(self.search_button)
+        search_layout.addWidget(self.clear_button)
+        
+        parent_layout.addWidget(search_container)
 
     def _setupPaginationControls(self, parent_layout):
         pagination_widget = QtWidgets.QWidget()
@@ -262,26 +342,97 @@ class StudentBrowseFaculty_ui(QWidget):
         
         parent_layout.addWidget(pagination_widget)
 
+    def _onSearchTextChanged(self, text):
+        """Handle real-time search as user types"""
+        if text.strip():
+            self._performSearch()
+        else:
+            self._clearSearch()
+
+    def _performSearch(self):
+        """Perform search based on current search text"""
+        search_text = self.search_input.text().strip().lower()
+        
+        if not search_text:
+            self.filtered_faculties = self.faculties.copy()
+        else:
+            self.filtered_faculties = [
+                faculty for faculty in self.faculties
+                if (search_text in faculty["name"].lower() or
+                    search_text in faculty["email"].lower() or
+                    search_text in faculty["department"].lower())
+            ]
+        
+        # Reset to first page after search
+        self.current_page = 0
+        self._populateFacultiesGrid()
+        
+        # Update results count
+        self._updateSearchResultsCount()
+
+    def _clearSearch(self):
+        """Clear search and show all faculties"""
+        self.search_input.clear()
+        self.filtered_faculties = self.faculties.copy()
+        self.current_page = 0
+        self._populateFacultiesGrid()
+        self._updateSearchResultsCount()
+
+    def _updateSearchResultsCount(self):
+        """Update the header to show search results count"""
+        faculties_header = self.findChild(QtWidgets.QLabel, "faculties_header")
+        if faculties_header:
+            if self.search_input.text().strip():
+                total_count = len(self.faculties)
+                filtered_count = len(self.filtered_faculties)
+                faculties_header.setText(f"Found {filtered_count} of {total_count} faculties")
+            else:
+                faculties_header.setText(f"See Available Faculties ({len(self.faculties)} total)")
+
     def _populateFacultiesGrid(self):
+        """Populate the grid with filtered faculties"""
+        # Clear existing items
         for i in reversed(range(self.faculties_grid_layout.count())):
             widget = self.faculties_grid_layout.itemAt(i).widget()
             if widget:
                 widget.deleteLater()
         
+        # Calculate start and end indices for current page
         start_index = self.current_page * self.items_per_page
-        end_index = min(start_index + self.items_per_page, len(self.faculties))
+        end_index = min(start_index + self.items_per_page, len(self.filtered_faculties))
         
+        # Show message if no results
+        if not self.filtered_faculties:
+            no_results_label = QtWidgets.QLabel("No faculties found matching your search criteria.")
+            no_results_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            no_results_label.setStyleSheet("""
+                QLabel {
+                    font: 12pt 'Poppins';
+                    color: #666666;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    padding: 40px;
+                    margin: 20px;
+                }
+            """)
+            self.faculties_grid_layout.addWidget(no_results_label, 0, 0, 1, 3)
+            return
+        
+        # Add faculty cards for current page
         for i in range(start_index, end_index):
-            faculty = self.faculties[i]
-            print(faculty)
+            faculty = self.filtered_faculties[i]
             position = i - start_index
             row = position // 3
             col = position % 3
+            
             faculty_card = self._createFacultyCard(faculty)
             self.faculties_grid_layout.addWidget(faculty_card, row, col)
         
-        total_pages = (len(self.faculties) + self.items_per_page - 1) // self.items_per_page
+        # Update pagination info
+        total_pages = (len(self.filtered_faculties) + self.items_per_page - 1) // self.items_per_page
         self.page_info.setText(f"Page {self.current_page + 1} of {total_pages}")
+        
+        # Update button states
         self.prev_button.setEnabled(self.current_page > 0)
         self.next_button.setEnabled(self.current_page < total_pages - 1)
 
@@ -304,6 +455,7 @@ class StudentBrowseFaculty_ui(QWidget):
         card_layout.setContentsMargins(15, 15, 15, 15)
         card_layout.setSpacing(10)
         
+        # Profile image placeholder
         profile_image = QLabel()
         profile_image.setFixedSize(80, 80)
         profile_image.setStyleSheet("""
@@ -314,6 +466,7 @@ class StudentBrowseFaculty_ui(QWidget):
         """)
         card_layout.addWidget(profile_image, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
         
+        # Email label
         email_label = QLabel(faculty["email"])
         email_label.setStyleSheet("""
             QLabel {
@@ -326,6 +479,7 @@ class StudentBrowseFaculty_ui(QWidget):
         email_label.setWordWrap(True)
         card_layout.addWidget(email_label)
         
+        # Name label
         name_label = QLabel(faculty["name"])
         name_label.setStyleSheet("""
             QLabel {
@@ -337,6 +491,7 @@ class StudentBrowseFaculty_ui(QWidget):
         name_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(name_label)
         
+        # Department label
         dept_label = QLabel(faculty["department"])
         dept_label.setStyleSheet("""
             QLabel {
@@ -348,7 +503,7 @@ class StudentBrowseFaculty_ui(QWidget):
         dept_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(dept_label)
         
-
+        # Request button
         request_button = QPushButton(faculty["role"])
         request_button.setFixedSize(230, 40)
         active_block = self.Appointment_crud.get_active_block(faculty["id"])
@@ -421,13 +576,11 @@ class StudentBrowseFaculty_ui(QWidget):
             self._populateFacultiesGrid()
 
     def _nextPage(self):
-        total_pages = (len(self.faculties) + self.items_per_page - 1) // self.items_per_page
+        total_pages = (len(self.filtered_faculties) + self.items_per_page - 1) // self.items_per_page
         if self.current_page < total_pages - 1:
             self.current_page += 1
             self._populateFacultiesGrid()
 
     def retranslateUi(self):
         self.Academics_5.setText("Faculties")
-        faculties_header = self.findChild(QtWidgets.QLabel, "faculties_header")
-        if faculties_header:
-            faculties_header.setText("See Available Faculties")
+        self._updateSearchResultsCount()  # Initialize the header text

@@ -2,6 +2,9 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QMessageBox
 from .appointment_crud import appointment_crud
 from datetime import datetime
+import os
+import shutil
+import time
 
 class StudentRequestPage_ui(QWidget):
     back = QtCore.pyqtSignal()
@@ -642,11 +645,11 @@ class StudentRequestPage_ui(QWidget):
         self._showAppointmentDetailsDialog()
 
     def _showAppointmentDetailsDialog(self):
-        """Show dialog with appointment details and purpose form"""
+        """Show dialog with appointment details, purpose form, and document upload"""
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Appointment Request")
         dialog.setModal(True)
-        dialog.setFixedSize(500, 600)
+        dialog.setFixedSize(550, 750)  # Increased height to accommodate document upload
         dialog.setStyleSheet("""
             QDialog {
                 background-color: white;
@@ -654,10 +657,36 @@ class StudentRequestPage_ui(QWidget):
             }
         """)
         
-        layout = QtWidgets.QVBoxLayout(dialog)
+        # Create scroll area for the entire dialog
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: white;
+            }
+            QScrollBar:vertical {
+                background: #f0f0f0;
+                width: 8px;
+                margin: 0px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: #c0c0c0;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+        """)
+        
+        # Main content widget
+        content_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(content_widget)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
         
+        # Title
         title_label = QtWidgets.QLabel("Appointment Request Details")
         title_label.setStyleSheet("""
             QLabel {
@@ -668,6 +697,7 @@ class StudentRequestPage_ui(QWidget):
         title_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title_label)
         
+        # Appointment Summary
         summary_group = QtWidgets.QGroupBox("Appointment Summary")
         summary_group.setStyleSheet("""
             QGroupBox {
@@ -710,7 +740,8 @@ class StudentRequestPage_ui(QWidget):
         
         layout.addWidget(summary_group)
         
-        reason_group = QtWidgets.QGroupBox("Appointment Purpose")
+        # Appointment Purpose
+        reason_group = QtWidgets.QGroupBox("Appointment Purpose *")
         reason_group.setStyleSheet("""
             QGroupBox {
                 font: 600 12pt 'Poppins';
@@ -725,7 +756,7 @@ class StudentRequestPage_ui(QWidget):
         reason_layout = QtWidgets.QVBoxLayout(reason_group)
         
         self.reason_text_edit = QtWidgets.QTextEdit()
-        self.reason_text_edit.setPlaceholderText("Please describe the purpose of your appointment...")
+        self.reason_text_edit.setPlaceholderText("Please describe the purpose of your appointment in detail...\n\nExamples:\n- Project consultation\n- Thesis guidance\n- Grade discussion\n- Research collaboration\n- Course advising")
         self.reason_text_edit.setFixedHeight(120)
         self.reason_text_edit.setStyleSheet("""
             QTextEdit {
@@ -743,6 +774,7 @@ class StudentRequestPage_ui(QWidget):
         reason_layout.addWidget(self.reason_text_edit)
         layout.addWidget(reason_group)
         
+        # Meeting Location
         location_group = QtWidgets.QGroupBox("Meeting Location")
         location_group.setStyleSheet("""
             QGroupBox {
@@ -763,6 +795,8 @@ class StudentRequestPage_ui(QWidget):
             "Online Meeting",
             "Classroom",
             "Laboratory",
+            "Library",
+            "Conference Room",
             "Other (specify in purpose)"
         ])
         self.location_combo.setStyleSheet("""
@@ -773,12 +807,112 @@ class StudentRequestPage_ui(QWidget):
                 font: 11pt 'Poppins';
                 background-color: #fafafa;
             }
+            QComboBox:focus {
+                border: 1px solid #084924;
+            }
         """)
         location_layout.addWidget(self.location_combo)
         layout.addWidget(location_group)
         
+        # Document Upload Section
+        documents_group = QtWidgets.QGroupBox("Supporting Documents (Optional)")
+        documents_group.setStyleSheet("""
+            QGroupBox {
+                font: 600 12pt 'Poppins';
+                color: #084924;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 12px;
+            }
+        """)
+        
+        documents_layout = QtWidgets.QVBoxLayout(documents_group)
+        
+        # Upload instructions
+        instructions_label = QtWidgets.QLabel(
+            "You can upload supporting documents such as:\n"
+            "• Project proposals\n• Research papers\n• Assignment files\n• Reference images\n• Supporting documents"
+        )
+        instructions_label.setStyleSheet("""
+            QLabel {
+                font: 10pt 'Poppins';
+                color: #666666;
+                background-color: #f8f9fa;
+                padding: 10px;
+                border-radius: 6px;
+                line-height: 1.4;
+            }
+        """)
+        instructions_label.setWordWrap(True)
+        documents_layout.addWidget(instructions_label)
+        
+        # File format info
+        format_label = QtWidgets.QLabel("Supported formats: Images (PNG, JPG, JPEG), PDF, Documents (DOC, DOCX)")
+        format_label.setStyleSheet("QLabel { font: 9pt 'Poppins'; color: #888888; margin-top: 5px; }")
+        documents_layout.addWidget(format_label)
+        
+        # Upload button
+        upload_button_layout = QtWidgets.QHBoxLayout()
+        
+        self.upload_button = QtWidgets.QPushButton("Choose Files")
+        self.upload_button.setFixedSize(120, 40)
+        self.upload_button.setStyleSheet("""
+            QPushButton {
+                background-color: #2F80ED;
+                color: white;
+                border-radius: 8px;
+                font: 600 11pt 'Poppins';
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #2a75e0;
+            }
+            QPushButton:pressed {
+                background-color: #1e6ac8;
+            }
+        """)
+        self.upload_button.clicked.connect(lambda: self._handleFileUpload(dialog))
+        
+        self.clear_files_button = QtWidgets.QPushButton("Clear All")
+        self.clear_files_button.setFixedSize(100, 40)
+        self.clear_files_button.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border-radius: 8px;
+                font: 600 11pt 'Poppins';
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #5a6268;
+            }
+        """)
+        self.clear_files_button.clicked.connect(lambda: self._clearUploadedFiles(dialog))
+        self.clear_files_button.setEnabled(False)
+        
+        upload_button_layout.addWidget(self.upload_button)
+        upload_button_layout.addWidget(self.clear_files_button)
+        upload_button_layout.addStretch(1)
+        
+        documents_layout.addLayout(upload_button_layout)
+        
+        # Uploaded files list
+        self.uploaded_files_widget = QtWidgets.QWidget()
+        self.uploaded_files_layout = QtWidgets.QVBoxLayout(self.uploaded_files_widget)
+        self.uploaded_files_layout.setContentsMargins(0, 10, 0, 0)
+        self.uploaded_files_layout.setSpacing(5)
+        
+        documents_layout.addWidget(self.uploaded_files_widget)
+        
+        # Store uploaded files for this dialog
+        self.uploaded_files = []
+        
+        layout.addWidget(documents_group)
+        
         layout.addStretch(1)
         
+        # Buttons
         button_layout = QtWidgets.QHBoxLayout()
         
         cancel_button = QtWidgets.QPushButton("Cancel")
@@ -817,15 +951,186 @@ class StudentRequestPage_ui(QWidget):
         
         layout.addLayout(button_layout)
         
+        # Set up scroll area
+        scroll_area.setWidget(content_widget)
+        
+        # Main dialog layout
+        main_layout = QtWidgets.QVBoxLayout(dialog)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll_area)
+        
         dialog.exec()
 
+    def _handleFileUpload(self, dialog):
+        """Handle file upload button click"""
+        file_dialog = QtWidgets.QFileDialog()
+        file_paths, _ = file_dialog.getOpenFileNames(
+            dialog,
+            "Select Supporting Documents",
+            "",
+            "All Supported Files (*.png *.jpg *.jpeg *.pdf *.doc *.docx);;"
+            "Images (*.png *.jpg *.jpeg);;"
+            "PDF Files (*.pdf);;"
+            "Word Documents (*.doc *.docx);;"
+            "All Files (*)"
+        )
+        
+        if file_paths:
+            for file_path in file_paths:
+                if file_path:  # Check if file path is not empty
+                    self._addUploadedFile(file_path, dialog)
+
+    def _addUploadedFile(self, file_path, dialog):
+        """Add an uploaded file to the list"""
+        try:
+            file_name = file_path.split('/')[-1]
+            file_size = self._get_file_size(file_path)
+            
+            # Create file item widget
+            file_item = QtWidgets.QWidget()
+            file_item.setFixedHeight(50)
+            file_item.setStyleSheet("""
+                QWidget {
+                    background-color: #f8f9fa;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 6px;
+                    margin: 2px 0px;
+                }
+            """)
+            
+            file_layout = QtWidgets.QHBoxLayout(file_item)
+            file_layout.setContentsMargins(10, 5, 10, 5)
+            file_layout.setSpacing(10)
+            
+            # File icon based on type
+            icon_label = QtWidgets.QLabel()
+            icon_label.setFixedSize(24, 24)
+            if file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
+                icon_label.setStyleSheet("QLabel { background-color: #4CAF50; border-radius: 4px; }")
+                icon_label.setText("🖼️")
+            elif file_path.lower().endswith('.pdf'):
+                icon_label.setStyleSheet("QLabel { background-color: #F44336; border-radius: 4px; }")
+                icon_label.setText("📄")
+            elif file_path.lower().endswith(('.doc', '.docx')):
+                icon_label.setStyleSheet("QLabel { background-color: #2196F3; border-radius: 4px; }")
+                icon_label.setText("📝")
+            else:
+                icon_label.setStyleSheet("QLabel { background-color: #9E9E9E; border-radius: 4px; }")
+                icon_label.setText("📎")
+            
+            icon_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            icon_label.setStyleSheet(icon_label.styleSheet() + " QLabel { color: white; font: 12pt; }")
+            
+            # File info
+            file_info_widget = QtWidgets.QWidget()
+            file_info_layout = QtWidgets.QVBoxLayout(file_info_widget)
+            file_info_layout.setContentsMargins(0, 0, 0, 0)
+            file_info_layout.setSpacing(2)
+            
+            file_name_label = QtWidgets.QLabel(file_name)
+            file_name_label.setStyleSheet("QLabel { font: 600 10pt 'Poppins'; color: #333; }")
+            # FIX: Use word wrap and maximum width instead of setElideMode
+            file_name_label.setWordWrap(True)
+            file_name_label.setMaximumWidth(300)
+            
+            file_size_label = QtWidgets.QLabel(file_size)
+            file_size_label.setStyleSheet("QLabel { font: 9pt 'Poppins'; color: #666; }")
+            
+            file_info_layout.addWidget(file_name_label)
+            file_info_layout.addWidget(file_size_label)
+            
+            # Remove button
+            remove_button = QtWidgets.QPushButton("×")
+            remove_button.setFixedSize(24, 24)
+            remove_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #dc3545;
+                    color: white;
+                    border-radius: 12px;
+                    font: bold 10pt 'Poppins';
+                    border: none;
+                }
+                QPushButton:hover {
+                    background-color: #c82333;
+                }
+            """)
+            remove_button.clicked.connect(lambda: self._removeUploadedFile(file_item, file_path, dialog))
+            
+            file_layout.addWidget(icon_label)
+            file_layout.addWidget(file_info_widget, 1)
+            file_layout.addWidget(remove_button)
+            
+            # Add to uploaded files list
+            self.uploaded_files_layout.addWidget(file_item)
+            self.uploaded_files.append(file_path)
+            
+            # Enable clear all button
+            self.clear_files_button.setEnabled(True)
+            
+        except Exception as e:
+            print(f"Error adding uploaded file: {e}")
+            QtWidgets.QMessageBox.warning(
+                dialog,
+                "Upload Error",
+                f"Failed to add file: {str(e)}"
+            )
+
+    def _removeUploadedFile(self, file_item, file_path, dialog):
+        """Remove an uploaded file from the list"""
+        try:
+            # Remove from layout
+            self.uploaded_files_layout.removeWidget(file_item)
+            file_item.deleteLater()
+            
+            # Remove from list
+            if file_path in self.uploaded_files:
+                self.uploaded_files.remove(file_path)
+            
+            # Disable clear all button if no files left
+            if not self.uploaded_files:
+                self.clear_files_button.setEnabled(False)
+                
+        except Exception as e:
+            print(f"Error removing uploaded file: {e}")
+
+    def _clearUploadedFiles(self, dialog):
+        """Clear all uploaded files"""
+        try:
+            # Remove all file items from layout
+            for i in reversed(range(self.uploaded_files_layout.count())):
+                item = self.uploaded_files_layout.itemAt(i)
+                if item.widget():
+                    item.widget().deleteLater()
+            
+            # Clear the files list
+            self.uploaded_files.clear()
+            
+            # Disable clear all button
+            self.clear_files_button.setEnabled(False)
+            
+        except Exception as e:
+            print(f"Error clearing uploaded files: {e}")
+
+    def _get_file_size(self, file_path):
+        """Get human-readable file size"""
+        try:
+            size = os.path.getsize(file_path)
+            if size < 1024:
+                return f"{size} B"
+            elif size < 1024 * 1024:
+                return f"{size/1024:.1f} KB"
+            else:
+                return f"{size/(1024*1024):.1f} MB"
+        except:
+            return "Unknown size"
+
     def _handleSubmitRequest(self, dialog):
-        """Handle the appointment request submission"""
+        """Handle the appointment request submission with file uploads"""
         reason_text = self.reason_text_edit.toPlainText().strip()
         location = self.location_combo.currentText()
         
         if not reason_text:
-            QMessageBox.warning(
+            QtWidgets.QMessageBox.warning(
                 dialog,
                 "Missing Information",
                 "Please enter the purpose of your appointment before submitting."
@@ -835,53 +1140,66 @@ class StudentRequestPage_ui(QWidget):
         try:
             student_id = self._get_current_student_id()
             if not student_id:
-                QMessageBox.warning(dialog, "Error", "Student profile not found.")
+                QtWidgets.QMessageBox.warning(dialog, "Error", "Student profile not found.")
                 return
+            
+            # Handle file uploads and get file paths
+            uploaded_file_paths = []
+            if self.uploaded_files:
+                # Create uploads directory if it doesn't exist
+                upload_dir = "uploads"
+                if not os.path.exists(upload_dir):
+                    os.makedirs(upload_dir)
                 
+                # Copy files to uploads directory
+                for file_path in self.uploaded_files:
+                    try:
+                        # Generate unique filename
+                        file_ext = os.path.splitext(file_path)[1]
+                        unique_filename = f"{student_id}_{int(time.time())}_{len(uploaded_file_paths)}{file_ext}"
+                        destination_path = os.path.join(upload_dir, unique_filename)
+                        
+                        # Copy file
+                        shutil.copy2(file_path, destination_path)
+                        uploaded_file_paths.append(destination_path)
+                        
+                    except Exception as e:
+                        print(f"Error copying file {file_path}: {e}")
+                        QtWidgets.QMessageBox.warning(
+                            dialog,
+                            "File Upload Error",
+                            f"Failed to upload one or more files. Please try again."
+                        )
+                        return
+            
+            # FIX: Store all file paths as comma-separated string in image_path
+            all_file_paths = ",".join(uploaded_file_paths) if uploaded_file_paths else ""
+            
             result = self.Appointment_crud.create_appointment(
                 student_id=student_id,
                 schedule_entry_id=self.selected_schedule_entry["id"],
                 details=reason_text,
                 address=location,
                 date_str=self.selected_date,
-                image_path=""
+                image_path=all_file_paths  # FIX: Store all files here, removed additional_files parameter
             )
             
             if result:
                 dialog.accept()
-                self._showSuccessDialog()
+                self._showSuccessDialog(len(uploaded_file_paths))
             else:
-                QMessageBox.warning(dialog, "Error", "Failed to create appointment request.")
+                QtWidgets.QMessageBox.warning(dialog, "Error", "Failed to create appointment request.")
                 
         except Exception as e:
             print(f"Error creating appointment: {e}")
-            QMessageBox.warning(dialog, "Error", f"Failed to create appointment: {str(e)}")
+            QtWidgets.QMessageBox.warning(dialog, "Error", f"Failed to create appointment: {str(e)}")
 
-    def _get_current_student_id(self):
-        """Get the current student's ID"""
-        students = self.Appointment_crud.list_students()
-        for student in students:
-            if student.get('email') == self.username or student.get('name') == self.username:
-                return student.get('id')
-        
-        try:
-            student_id = self.Appointment_crud.create_student(
-                name=self.username,
-                email=self.username,
-                course="Unknown",
-                year_level="Unknown"
-            )
-            return student_id
-        except Exception as e:
-            print(f"Error creating student: {e}")
-            return None
-
-    def _showSuccessDialog(self):
-        """Show success dialog"""
+    def _showSuccessDialog(self, file_count=0):
+        """Show success dialog with file upload information"""
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Success")
         dialog.setModal(True)
-        dialog.setFixedSize(350, 200)
+        dialog.setFixedSize(400, 250)
         dialog.setStyleSheet("""
             QDialog {
                 background-color: white;
@@ -893,6 +1211,7 @@ class StudentRequestPage_ui(QWidget):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(20)
         
+        # Success icon
         icon_label = QtWidgets.QLabel()
         icon_label.setFixedSize(64, 64)
         icon_label.setStyleSheet("""
@@ -912,10 +1231,17 @@ class StudentRequestPage_ui(QWidget):
         message_label.setStyleSheet("""
             QLabel {
                 color: #084924;
-                font: 600 14pt 'Poppins';
+                font: 600 16pt 'Poppins';
             }
         """)
         layout.addWidget(message_label)
+        
+        # File upload info
+        if file_count > 0:
+            files_info = QtWidgets.QLabel(f"{file_count} supporting document(s) uploaded successfully")
+            files_info.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            files_info.setStyleSheet("QLabel { font: 11pt 'Poppins'; color: #2F80ED; }")
+            layout.addWidget(files_info)
         
         info_label = QtWidgets.QLabel("Your request is pending faculty approval.\nYou will be notified once it's processed.")
         info_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -936,11 +1262,31 @@ class StudentRequestPage_ui(QWidget):
                 background-color: #0a5a2f;
             }
         """)
-        ok_button.clicked.connect(lambda: self._handleSuccessDialogClose(dialog))
+        ok_button.clicked.connect(dialog.accept)
+        ok_button.clicked.connect(self.back)
         
         layout.addWidget(ok_button)
         
         dialog.exec()
+
+    def _get_current_student_id(self):
+        """Get the current student's ID"""
+        students = self.Appointment_crud.list_students()
+        for student in students:
+            if student.get('email') == self.username or student.get('name') == self.username:
+                return student.get('id')
+        
+        try:
+            student_id = self.Appointment_crud.create_student(
+                name=self.username,
+                email=self.username,
+                course="Unknown",
+                year_level="Unknown"
+            )
+            return student_id
+        except Exception as e:
+            print(f"Error creating student: {e}")
+            return None
 
     def _handleSuccessDialogClose(self, dialog):
         """Handle success dialog close - emit refresh signal and close"""

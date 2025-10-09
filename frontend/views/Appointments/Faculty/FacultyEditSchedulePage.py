@@ -1,5 +1,5 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QDialog
 from PyQt6.QtCore import QDate
 from .appointment_crud import appointment_crud
 
@@ -145,7 +145,7 @@ class FacultyEditSchedulePage_ui(QWidget):
 
         self.weeklyGridEdit = QtWidgets.QTableWidget()
         self.weeklyGridEdit.setColumnCount(8)
-        self.weeklyGridEdit.setRowCount(24)
+        self.weeklyGridEdit.setRowCount(24)  # 7 AM to 7 PM with 30-min increments
         self.weeklyGridEdit.setShowGrid(False)
         self.weeklyGridEdit.verticalHeader().setVisible(False)
         self.weeklyGridEdit.horizontalHeader().setVisible(True)
@@ -165,15 +165,18 @@ class FacultyEditSchedulePage_ui(QWidget):
         for c in range(1, 8):
             header.setSectionResizeMode(c, QtWidgets.QHeaderView.ResizeMode.Stretch)
 
+        # Create time labels (7:00 AM to 7:00 PM with 30-min increments)
         times = []
-        for hour in range(7, 19):
+        for hour in range(7, 19):  # 7 AM to 7 PM
             times.append(f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}")
             times.append(f"{hour % 12 or 12}:30 {'AM' if hour < 12 else 'PM'}")
+        
         for r, t in enumerate(times):
             item = QtWidgets.QTableWidgetItem(t)
             item.setForeground(QtGui.QBrush(QtGui.QColor("#6b6b6b")))
+            item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             self.weeklyGridEdit.setItem(r, 0, item)
-            self.weeklyGridEdit.setRowHeight(r, 60)
+            self.weeklyGridEdit.setRowHeight(r, 40)  # Reduced height for better fit
             for c in range(1, 8):
                 self._addPlusCell(r, c)
 
@@ -188,19 +191,29 @@ class FacultyEditSchedulePage_ui(QWidget):
         plus_btn = QtWidgets.QPushButton("+")
         plus_btn.setFixedSize(24, 24)
         plus_btn.setStyleSheet("""
-            QPushButton { background-color: #e8f5e8; color: #084924; border: 1px solid #084924; border-radius: 12px; font: bold 12pt 'Poppins'; }
-            QPushButton:hover { background-color: #d4edda; border: 2px solid #084924; }
+            QPushButton { 
+                background-color: #e8f5e8; 
+                color: #084924; 
+                border: 1px solid #084924; 
+                border-radius: 12px; 
+                font: bold 12pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #d4edda; 
+                border: 2px solid #084924; 
+            }
         """)
-        plus_btn.clicked.connect(lambda: self._showMakeAvailableDialog(row, col))
+        plus_btn.clicked.connect(lambda checked, r=row, c=col: self._showMakeAvailableDialog(r, c))
         layout.addWidget(plus_btn, 0, QtCore.Qt.AlignmentFlag.AlignCenter)
         self.weeklyGridEdit.setCellWidget(row, col, container)
 
     def _showMakeAvailableDialog(self, row, col):
-        dialog = QtWidgets.QDialog()
+        dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Make Time Slot Available")
         dialog.setModal(True)
-        dialog.setMinimumSize(400, 200)
+        dialog.setFixedSize(400, 200)
         dialog.setStyleSheet("QDialog { background-color: white; border-radius: 10px; }")
+        
         layout = QtWidgets.QVBoxLayout(dialog)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
@@ -217,29 +230,56 @@ class FacultyEditSchedulePage_ui(QWidget):
 
         time_info = QtWidgets.QLabel(f"{day_text} {time_text}")
         time_info.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        time_info.setStyleSheet("QLabel { color: #6b6b6b; font: 11pt 'Poppins'; background-color: #f8f9fa; padding: 8px; border-radius: 6px; }")
+        time_info.setStyleSheet("""
+            QLabel { 
+                color: #6b6b6b; 
+                font: 11pt 'Poppins'; 
+                background-color: #f8f9fa; 
+                padding: 8px; 
+                border-radius: 6px; 
+            }
+        """)
         layout.addWidget(time_info)
 
         layout.addStretch(1)
+        
         button_layout = QtWidgets.QHBoxLayout()
         cancel_btn = QtWidgets.QPushButton("Cancel")
         cancel_btn.setFixedHeight(35)
         cancel_btn.setStyleSheet("""
-            QPushButton { background-color: #6c757d; color: white; border-radius: 6px; font: 600 11pt 'Poppins'; }
-            QPushButton:hover { background-color: #5a6268; }
+            QPushButton { 
+                background-color: #6c757d; 
+                color: white; 
+                border-radius: 6px; 
+                font: 600 11pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #5a6268; 
+            }
         """)
         cancel_btn.clicked.connect(dialog.reject)
+        
         make_available_btn = QtWidgets.QPushButton("Make Available")
         make_available_btn.setFixedHeight(35)
         make_available_btn.setStyleSheet("""
-            QPushButton { background-color: #084924; color: white; border-radius: 6px; font: 600 11pt 'Poppins'; }
-            QPushButton:hover { background-color: #0a5a2f; }
+            QPushButton { 
+                background-color: #084924; 
+                color: white; 
+                border-radius: 6px; 
+                font: 600 11pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #0a5a2f; 
+            }
         """)
         make_available_btn.clicked.connect(lambda: self._convertToAvailableSlot(row, col, time_text, day_text))
+        make_available_btn.clicked.connect(dialog.accept)
+        
         button_layout.addWidget(cancel_btn)
         button_layout.addStretch(1)
         button_layout.addWidget(make_available_btn)
         layout.addLayout(button_layout)
+        
         dialog.exec()
 
     def _convertToAvailableSlot(self, row, col, time_text, day_text):
@@ -247,65 +287,151 @@ class FacultyEditSchedulePage_ui(QWidget):
         container.setStyleSheet("QWidget { background: transparent; }")
         layout = QtWidgets.QHBoxLayout(container)
         layout.setContentsMargins(2, 2, 2, 2)
+        
         slot_widget = QtWidgets.QWidget()
-        slot_widget.setStyleSheet("QWidget { background: #ffc000; border-radius: 6px; border: 1px solid #e6ac00; }")
+        slot_widget.setStyleSheet("""
+            QWidget { 
+                background: #ffc000; 
+                border-radius: 6px; 
+                border: 1px solid #e6ac00; 
+            }
+        """)
         slot_widget.setMinimumHeight(36)
+        
         slot_layout = QtWidgets.QVBoxLayout(slot_widget)
         slot_layout.setContentsMargins(8, 4, 8, 4)
+        slot_layout.setSpacing(2)
+        
         time_label = QtWidgets.QLabel(time_text)
-        time_label.setStyleSheet("QLabel { color: #2b2b2b; font: 600 9pt 'Poppins'; background: transparent; }")
+        time_label.setStyleSheet("""
+            QLabel { 
+                color: #2b2b2b; 
+                font: 600 9pt 'Poppins'; 
+                background: transparent; 
+            }
+        """)
         time_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        
         status_label = QtWidgets.QLabel("Available")
-        status_label.setStyleSheet("QLabel { color: #2b2b2b; font: 8pt 'Poppins'; background: transparent; }")
+        status_label.setStyleSheet("""
+            QLabel { 
+                color: #2b2b2b; 
+                font: 8pt 'Poppins'; 
+                background: transparent; 
+            }
+        """)
         status_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        
         slot_layout.addWidget(time_label)
         slot_layout.addWidget(status_label)
         layout.addWidget(slot_widget)
+        
         self.weeklyGridEdit.setCellWidget(row, col, container)
-        self._showScheduleUpdatedDialog()
 
     def _createSchedule(self):
-        time_map = {i: f"{h % 12 or 12}:{m:02d} {'AM' if h < 12 else 'PM'}" for i, (h, m) in enumerate([(h, m) for h in range(7, 19) for m in [0, 30]])}
+        # Create time map for 12-hour to 24-hour conversion
+        time_map = {}
+        index = 0
+        for hour in range(7, 19):  # 7 AM to 7 PM
+            for minute in [0, 30]:
+                period = "AM" if hour < 12 else "PM"
+                hour_12 = hour % 12 if hour != 12 else 12
+                time_12h = f"{hour_12}:{minute:02d} {period}"
+                time_map[index] = time_12h
+                index += 1
+
         day_map = {1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday"}
         time_slots = []
-        for r in range(self.weeklyGridEdit.rowCount()):
-            for c in range(1, self.weeklyGridEdit.columnCount()):
-                if self.weeklyGridEdit.cellWidget(r, c) and "Available" in [w.text() for w in self.weeklyGridEdit.cellWidget(r, c).findChildren(QtWidgets.QLabel)]:
-                    start_time = time_map.get(r)
-                    hour, minute = map(int, start_time.split(":"))
-                    minute = int(minute / 60)
-                    if "PM" in start_time and hour != 12:
-                        hour += 12
-                    end_hour, end_minute = (hour, minute + 30) if minute < 30 else (hour + 1, 0)
-                    time_slots.append({
-                        "start": f"{hour:02d}:{minute:02d}",
-                        "end": f"{end_hour:02d}:{end_minute:02d}",
-                        "day": day_map[c],
-                        "date": self.current_date.toString("yyyy-MM-dd")
-                    })
+        
+        # Find all available slots
+        for row in range(self.weeklyGridEdit.rowCount()):
+            for col in range(1, self.weeklyGridEdit.columnCount()):
+                cell_widget = self.weeklyGridEdit.cellWidget(row, col)
+                if cell_widget:
+                    # Check if this cell contains an available slot (has yellow background)
+                    child_widgets = cell_widget.findChildren(QtWidgets.QWidget)
+                    for child in child_widgets:
+                        if "background: #ffc000" in child.styleSheet():
+                            time_12h = time_map.get(row)
+                            day_name = day_map.get(col)
+                            
+                            if time_12h and day_name:
+                                # Convert 12-hour time to 24-hour format
+                                time_part, period = time_12h.split()
+                                hour_12, minute = map(int, time_part.split(':'))
+                                
+                                # Convert to 24-hour format
+                                if period == "PM" and hour_12 != 12:
+                                    hour_24 = hour_12 + 12
+                                elif period == "AM" and hour_12 == 12:
+                                    hour_24 = 0
+                                else:
+                                    hour_24 = hour_12
+                                
+                                start_time = f"{hour_24:02d}:{minute:02d}"
+                                
+                                # Calculate end time (30 minutes later)
+                                end_minute = minute + 30
+                                end_hour = hour_24
+                                if end_minute >= 60:
+                                    end_hour += 1
+                                    end_minute -= 60
+                                end_time = f"{end_hour:02d}:{end_minute:02d}"
+                                
+                                time_slots.append({
+                                    "start": start_time,
+                                    "end": end_time,
+                                    "day": day_name
+                                })
+        
         if time_slots:
-            self.crud.plot_schedule(self.faculty_id, time_slots)
-            self._showScheduleUpdatedDialog()
+            try:
+                result = self.crud.plot_schedule(self.faculty_id, time_slots)
+                if result:
+                    self._showScheduleUpdatedDialog("Schedule created successfully!")
+                else:
+                    self._showScheduleUpdatedDialog("Failed to create schedule.", is_error=True)
+            except Exception as e:
+                self._showScheduleUpdatedDialog(f"Error creating schedule: {str(e)}", is_error=True)
+        else:
+            self._showScheduleUpdatedDialog("No time slots selected. Please add available slots first.", is_error=True)
 
     def _populateEditWeeklyGrid(self):
-        for r in range(self.weeklyGridEdit.rowCount()):
-            for c in range(1, self.weeklyGridEdit.columnCount()):
-                self.weeklyGridEdit.removeCellWidget(r, c)
-                self._addPlusCell(r, c)
+        # Clear all cells first
+        for row in range(self.weeklyGridEdit.rowCount()):
+            for col in range(1, self.weeklyGridEdit.columnCount()):
+                self.weeklyGridEdit.removeCellWidget(row, col)
+                self._addPlusCell(row, col)
+        
+        # Load existing schedule
         block = self.crud.get_active_block(self.faculty_id)
         if "error" not in block:
-            start_of_week = self.current_date.addDays(-self.current_date.dayOfWeek() + 1)  # Start of current week (Monday)
-            end_of_week = start_of_week.addDays(6)  # End of current week (Sunday)
-            # Temporarily adjust call to match current method signature
-            entries = self.crud.get_block_entries(block["id"])  # Remove date parameters until crud is updated
+            entries = self.crud.get_block_entries(block["id"])
             day_map = {"Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7}
-            time_map = {f"{h % 12 or 12}:{m:02d} {'AM' if h < 12 else 'PM'}": i for i, (h, m) in enumerate([(h, m) for h in range(7, 19) for m in [0, 30]])}
+            
+            # Create time map for conversion
+            time_map = {}
+            index = 0
+            for hour in range(7, 19):  # 7 AM to 7 PM
+                for minute in [0, 30]:
+                    period = "AM" if hour < 12 else "PM"
+                    hour_12 = hour % 12 if hour != 12 else 12
+                    time_12h = f"{hour_12}:{minute:02d} {period}"
+                    time_24h = f"{hour:02d}:{minute:02d}"
+                    time_map[time_24h] = index
+                    index += 1
+            
             for entry in entries:
                 col = day_map.get(entry["day_of_week"])
-                start_time = entry["start_time"]
-                if start_time in time_map:
-                    row = time_map[start_time]
-                    self._convertToAvailableSlot(row, col, start_time, entry["day_of_week"])
+                start_time_24h = entry["start_time"]
+                if start_time_24h in time_map and col:
+                    row = time_map[start_time_24h]
+                    # Convert to 12-hour format for display
+                    hour, minute = map(int, start_time_24h.split(':'))
+                    period = "AM" if hour < 12 else "PM"
+                    hour_12 = hour % 12 if hour != 0 else 12
+                    time_12h = f"{hour_12}:{minute:02d} {period}"
+                    self._convertToAvailableSlot(row, col, time_12h, entry["day_of_week"])
 
     def _updateWeek(self):
         self.current_date = self.dateEdit.date()
@@ -321,26 +447,57 @@ class FacultyEditSchedulePage_ui(QWidget):
         self.dateEdit.setDate(self.current_date)
         self._populateEditWeeklyGrid()
 
-    def _showScheduleUpdatedDialog(self):
-        dialog = QtWidgets.QDialog()
-        dialog.setWindowTitle("Success")
+    def _showScheduleUpdatedDialog(self, message="Schedule Updated!", is_error=False):
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Success" if not is_error else "Error")
         dialog.setModal(True)
-        dialog.setMinimumSize(300, 150)
-        dialog.setStyleSheet("QDialog { background-color: white; border-radius: 10px; }")
+        dialog.setFixedSize(300, 150)
+        
+        if is_error:
+            dialog.setStyleSheet("QDialog { background-color: white; border-radius: 10px; }")
+        else:
+            dialog.setStyleSheet("QDialog { background-color: white; border-radius: 10px; }")
+        
         layout = QtWidgets.QVBoxLayout(dialog)
         layout.setContentsMargins(20, 20, 20, 20)
-        message_label = QtWidgets.QLabel("Schedule Updated!")
+        
+        message_label = QtWidgets.QLabel(message)
         message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        message_label.setStyleSheet("QLabel { color: #084924; font: 600 14pt 'Poppins'; }")
+        if is_error:
+            message_label.setStyleSheet("QLabel { color: #d32f2f; font: 600 12pt 'Poppins'; }")
+        else:
+            message_label.setStyleSheet("QLabel { color: #084924; font: 600 14pt 'Poppins'; }")
         layout.addWidget(message_label)
+        
         ok_button = QtWidgets.QPushButton("OK")
         ok_button.setFixedHeight(40)
-        ok_button.setStyleSheet("""
-            QPushButton { background-color: #084924; color: white; border-radius: 8px; font: 600 12pt 'Poppins'; }
-            QPushButton:hover { background-color: #0a5a2f; }
-        """)
+        if is_error:
+            ok_button.setStyleSheet("""
+                QPushButton { 
+                    background-color: #d32f2f; 
+                    color: white; 
+                    border-radius: 8px; 
+                    font: 600 12pt 'Poppins'; 
+                }
+                QPushButton:hover { 
+                    background-color: #b71c1c; 
+                }
+            """)
+        else:
+            ok_button.setStyleSheet("""
+                QPushButton { 
+                    background-color: #084924; 
+                    color: white; 
+                    border-radius: 8px; 
+                    font: 600 12pt 'Poppins'; 
+                }
+                QPushButton:hover { 
+                    background-color: #0a5a2f; 
+                }
+            """)
         ok_button.clicked.connect(dialog.accept)
         layout.addWidget(ok_button)
+        
         dialog.exec()
 
     def retranslateUi(self):
