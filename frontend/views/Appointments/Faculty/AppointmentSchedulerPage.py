@@ -30,7 +30,7 @@ class AppointmentSchedulerPage_ui(QWidget):
         logging.debug(f"Initialized AppointmentSchedulerPage_ui with username: {self.username}, faculty_id: {self.faculty_id}")
         self._setupAppointmentSchedulerPage()
         self.retranslateUi()
-        self.setFixedSize(1000, 550)
+        self.setFixedSize(1100, 550)
 
     def _get_faculty_id(self):
         faculty_list = self.crud.list_faculty()
@@ -98,10 +98,10 @@ class AppointmentSchedulerPage_ui(QWidget):
         self.dateEdit.dateChanged.connect(self._updateWeek)
         header_layout.addWidget(self.dateEdit)
 
-        self.backButton_7 = QtWidgets.QPushButton()
+        self.backButton_7 = QtWidgets.QPushButton("<- Back")
         self.backButton_7.setFixedSize(40, 40)
-        self.backButton_7.setStyleSheet("border: none; background: transparent;")
-        self.backButton_7.setIcon(QtGui.QIcon(":/assets/back_button.png"))
+        # self.backButton_7.setStyleSheet("border: none; background: transparent;")
+        # self.backButton_7.setIcon(QtGui.QIcon(":/assets/back_button.png"))
         self.backButton_7.setIconSize(QtCore.QSize(40, 40))
         self.backButton_7.clicked.connect(self.back.emit)
         header_layout.addWidget(self.backButton_7)
@@ -433,10 +433,10 @@ class AppointmentSchedulerPage_ui(QWidget):
 
     def _deleteSelectedSlots(self):
         selected = self.weeklyGrid.selectedIndexes()
-        if not selected:
-            logging.info("No slots selected for deletion")
-            QtWidgets.QMessageBox.information(self, "No Selection", "Please select appointment slots to delete.")
-            return
+        # if not selected:
+        #     logging.info("No slots selected for deletion")
+        #     QtWidgets.QMessageBox.information(self, "No Selection", "Please select appointment slots to delete.")
+        #     return
 
         # Confirm deletion
         reply = QtWidgets.QMessageBox.question(
@@ -451,67 +451,72 @@ class AppointmentSchedulerPage_ui(QWidget):
             return
 
         block = self.crud.get_active_block(self.faculty_id)
+        print(block)
+        print("Lord Have Mercy")
         if "error" in block:
             logging.warning("No active block found")
             QtWidgets.QMessageBox.warning(self, "Error", "No active schedule block found.")
             return
-
-        appointments = self.crud.get_faculty_appointments(self.faculty_id)
-        day_map = {1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday"}
-        
-        # Create time map for 12-hour format
-        time_map = {}
-        for i, (h, m) in enumerate([(h, m) for h in range(0, 13) for m in [0, 30]]):
-            period = "AM" if h < 12 else "PM"
-            hour = h % 12 if h != 0 else 12
-            time_str = f"{hour}:{m:02d} {period}"
-            time_map[i] = time_str
-
-        deleted_count = 0
-        for index in selected:
-            row, col = index.row(), index.column()
-            if col == 0:  # Skip time column
-                continue
-                
-            start_time = time_map.get(row)
-            day = day_map.get(col)
+        else:
+            print(block["id"])
+            self.crud.delete_active_block(block["id"])
             
-            if not start_time or not day:
-                continue
+        # appointments = self.crud.get_faculty_appointments(self.faculty_id)
+        # day_map = {1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday"}
+        
+        # # Create time map for 12-hour format
+        # time_map = {}
+        # for i, (h, m) in enumerate([(h, m) for h in range(0, 13) for m in [0, 30]]):
+        #     period = "AM" if h < 12 else "PM"
+        #     hour = h % 12 if h != 0 else 12
+        #     time_str = f"{hour}:{m:02d} {period}"
+        #     time_map[i] = time_str
 
-            # Find appointments for this time slot
-            for appt in appointments:
-                entry = next((e for e in self.crud.entries_db.read_all() if e["id"] == appt.get("appointment_schedule_entry_id")), {})
-                if entry and entry["day_of_week"] == day:
-                    # Convert entry time to 12-hour format for comparison
-                    entry_start_time_24h = entry["start_time"]
-                    if ":" in entry_start_time_24h:
-                        hour, minute = map(int, entry_start_time_24h.split(":"))
-                        period = "AM" if hour < 12 else "PM"
-                        hour_12 = hour % 12 if hour != 0 else 12
-                        entry_start_time_12h = f"{hour_12}:{minute:02d} {period}"
+        # deleted_count = 0
+        # for index in selected:
+        #     row, col = index.row(), index.column()
+        #     if col == 0:  # Skip time column
+        #         continue
+                
+        #     start_time = time_map.get(row)
+        #     day = day_map.get(col)
+            
+        #     if not start_time or not day:
+        #         continue
+
+        #     # Find appointments for this time slot
+        #     for appt in appointments:
+        #         entry = next((e for e in self.crud.entries_db.read_all() if e["id"] == appt.get("appointment_schedule_entry_id")), {})
+        #         if entry and entry["day_of_week"] == day:
+        #             # Convert entry time to 12-hour format for comparison
+        #             entry_start_time_24h = entry["start_time"]
+        #             if ":" in entry_start_time_24h:
+        #                 hour, minute = map(int, entry_start_time_24h.split(":"))
+        #                 period = "AM" if hour < 12 else "PM"
+        #                 hour_12 = hour % 12 if hour != 0 else 12
+        #                 entry_start_time_12h = f"{hour_12}:{minute:02d} {period}"
                         
-                        if entry_start_time_12h == start_time:
-                            logging.debug(f"Deleting appointment: {appt}")
-                            result = self.crud.delete_appointment(appt["id"])
-                            if result:
-                                deleted_count += 1
-                            break
+        #                 if entry_start_time_12h == start_time:
+        #                     logging.debug(f"Deleting appointment: {appt}")
+        #                     result = self.crud.delete_appointment(appt["id"])
+        #                     if result:
+        #                         deleted_count += 1
+        #                     break
 
         # Refresh the schedule
         self._populateWeeklySchedule()
         
-        # Show result message
-        if deleted_count > 0:
-            QtWidgets.QMessageBox.information(self, "Success", f"Successfully deleted {deleted_count} appointment(s).")
-        else:
-            QtWidgets.QMessageBox.information(self, "No Appointments", "No appointments found in the selected slots.")
+        # # Show result message
+        # if deleted_count > 0:
+        #     QtWidgets.QMessageBox.information(self, "Success", f"Successfully deleted {deleted_count} appointment(s).")
+        # else:
+        #     QtWidgets.QMessageBox.information(self, "No Appointments", "No appointments found in the selected slots.")
 
     def retranslateUi(self):
         self.Academics_5.setText("Appointment Scheduler")
         self.label_92.setText("Weekly Schedule")
         self.createschedule_2.setText("Create Schedule")
-        self.delete_3.setText("Delete")
+        self.delete_3.setText("Clear")
         self.comboBox_2.setItemText(0, "1st Semester 2025 - 2026")
         self.comboBox_2.setItemText(1, "2nd Semester 2025 - 2026")
         self.comboBox_2.setItemText(2, "Summer 2026")

@@ -122,10 +122,10 @@ class FacultyReschedulePage_ui(QWidget):
         header_layout.addWidget(self.FacultyListPage)
         header_layout.addStretch(1)
 
-        self.backButton = QtWidgets.QPushButton()
+        self.backButton = QtWidgets.QPushButton("<- Back")
         self.backButton.setFixedSize(40, 40)
         self.backButton.setStyleSheet("border: none; background: transparent;")
-        self.backButton.setIcon(QtGui.QIcon(":/assets/back_button.png"))
+        # self.backButton.setIcon(QtGui.QIcon(":/assets/back_button.png"))
         self.backButton.setIconSize(QtCore.QSize(40, 40))
         self.backButton.clicked.connect(self.back.emit)
         header_layout.addWidget(self.backButton)

@@ -107,14 +107,7 @@ class FacultyEditSchedulePage_ui(QWidget):
         self.comboBox_3.addItems(["1st Semester 2025 - 2026", "2nd Semester 2025 - 2026", "Summer 2026"])
         controls_layout.addWidget(self.comboBox_3)
 
-        self.cancelButton = QtWidgets.QPushButton("Cancel")
-        self.cancelButton.setFixedSize(80, 35)
-        self.cancelButton.setStyleSheet("""
-            QPushButton { background-color: #6c757d; color: white; border-radius: 6px; font: 600 10pt 'Poppins'; }
-            QPushButton:hover { background-color: #5a6268; }
-        """)
-        self.cancelButton.clicked.connect(self.back.emit)
-        controls_layout.addWidget(self.cancelButton)
+        
 
         self.createButton = QtWidgets.QPushButton("Create")
         self.createButton.setFixedSize(80, 35)
@@ -124,6 +117,15 @@ class FacultyEditSchedulePage_ui(QWidget):
         """)
         self.createButton.clicked.connect(self._createSchedule)
         controls_layout.addWidget(self.createButton)
+
+        self.cancelButton = QtWidgets.QPushButton("<- Back")
+        self.cancelButton.setFixedSize(80, 35)
+        # self.cancelButton.setStyleSheet("""
+        #     QPushButton { background-color: #6c757d; color: white; border-radius: 6px; font: 600 10pt 'Poppins'; }
+        #     QPushButton:hover { background-color: #5a6268; }
+        # """)
+        self.cancelButton.clicked.connect(self.back.emit)
+        controls_layout.addWidget(self.cancelButton)
 
         widget_layout.addWidget(controls_widget)
         self._setupEditWeeklyGrid(widget_layout)
@@ -503,5 +505,5 @@ class FacultyEditSchedulePage_ui(QWidget):
     def retranslateUi(self):
         self.RequestPage.setText("Edit Schedule")
         self.label_93.setText("Set Available Slots")
-        self.cancelButton.setText("Cancel")
+        self.cancelButton.setText("<-Back")
         self.createButton.setText("Create")

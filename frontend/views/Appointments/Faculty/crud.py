@@ -50,3 +50,18 @@ class JSONCRUD:
                 self._write_data(data)
                 return item
         return None
+    def delete(self, item_id):
+        # Read the data, assuming it's a list of dictionaries.
+        data = self._read_data()
+        
+        original_length = len(data)
+        
+        # Create a new list with all items *except* the one to be deleted.
+        data = [block for block in data if block.get("schedule_block_entry_id") != item_id]
+        
+        # Check if the list size changed to see if an item was deleted.
+        if len(data) < original_length:
+            # Assuming you have a method to write the data back.
+            self._write_data(data)
+            return True
+        return False  

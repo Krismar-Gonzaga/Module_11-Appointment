@@ -104,6 +104,8 @@ class appointment_crud:
             if block["faculty_id"] == faculty_id and block["is_available"]:
                 return block
         return {"error": "No available schedule block found for this faculty"}
+    def delete_active_block(self, block_id):
+        self.entries_db.delete(block_id)
 
     # ===========================
     # RETRIEVE BLOCK ENTRIES
