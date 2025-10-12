@@ -15,10 +15,11 @@ class FacultyEditSchedulePage_ui(QWidget):
         self.crud = appointment_crud()
         self.faculty_id = self._get_faculty_id()
         self.current_date = QDate.currentDate()
+        self.selected_slots = {}  # Track selected slots: {(row, col): True}
         self._setupEditSchedulePage()
         self.retranslateUi()
         self._populateEditWeeklyGrid()
-        self.setFixedSize(1000, 550)
+        self.setFixedSize(1100, 550)
 
     def _get_faculty_id(self):
         faculty_list = self.crud.list_faculty()
@@ -107,25 +108,89 @@ class FacultyEditSchedulePage_ui(QWidget):
         self.comboBox_3.addItems(["1st Semester 2025 - 2026", "2nd Semester 2025 - 2026", "Summer 2026"])
         controls_layout.addWidget(self.comboBox_3)
 
-        
+        # Unselect All Button
+        self.unselectButton = QtWidgets.QPushButton("Unselect All")
+        self.unselectButton.setFixedSize(100, 35)
+        self.unselectButton.setStyleSheet("""
+            QPushButton { 
+                background-color: #6c757d; 
+                color: white; 
+                border-radius: 6px; 
+                font: 600 10pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #5a6268; 
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
+        """)
+        self.unselectButton.clicked.connect(self._unselectAllSlots)
+        self.unselectButton.setEnabled(False)  # Initially disabled
+        controls_layout.addWidget(self.unselectButton)
 
         self.createButton = QtWidgets.QPushButton("Create")
         self.createButton.setFixedSize(80, 35)
         self.createButton.setStyleSheet("""
-            QPushButton { background-color: #084924; color: white; border-radius: 6px; font: 600 10pt 'Poppins'; }
-            QPushButton:hover { background-color: #0a5a2f; }
+            QPushButton { 
+                background-color: #084924; 
+                color: white; 
+                border-radius: 6px; 
+                font: 600 10pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #0a5a2f; 
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+            }
         """)
         self.createButton.clicked.connect(self._createSchedule)
+        self.createButton.setEnabled(False)  # Initially disabled
         controls_layout.addWidget(self.createButton)
 
-        self.cancelButton = QtWidgets.QPushButton("<- Back")
+        self.cancelButton = QtWidgets.QPushButton("Cancel")
         self.cancelButton.setFixedSize(80, 35)
-        # self.cancelButton.setStyleSheet("""
-        #     QPushButton { background-color: #6c757d; color: white; border-radius: 6px; font: 600 10pt 'Poppins'; }
-        #     QPushButton:hover { background-color: #5a6268; }
-        # """)
-        self.cancelButton.clicked.connect(self.back.emit)
+        self.cancelButton.setStyleSheet("""
+            QPushButton { 
+                background-color: #dc3545; 
+                color: white; 
+                border-radius: 6px; 
+                font: 600 10pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #c82333; 
+            }
+        """)
+        self.cancelButton.clicked.connect(self._cancelChanges)
         controls_layout.addWidget(self.cancelButton)
+
+        self.backButton_7 = QtWidgets.QPushButton("<- Back")
+        self.backButton_7.setFixedSize(40, 40)
+        self.backButton_7.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #084924, stop:1 #0a5a2f);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font: 600 11pt 'Poppins';
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0a5a2f, stop:1 #0c6b3a);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #06381b, stop:1 #084924);
+            }
+        """)
+        self.backButton_7.setFixedSize(100, 40)
+        self.backButton_7.clicked.connect(self.back.emit)
+        controls_layout.addWidget(self.backButton_7)
 
         widget_layout.addWidget(controls_widget)
         self._setupEditWeeklyGrid(widget_layout)
@@ -328,7 +393,188 @@ class FacultyEditSchedulePage_ui(QWidget):
         slot_layout.addWidget(status_label)
         layout.addWidget(slot_widget)
         
+        # Add unselect button
+        unselect_btn = QtWidgets.QPushButton("×")
+        unselect_btn.setFixedSize(20, 20)
+        unselect_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #dc3545; 
+                color: white; 
+                border-radius: 10px; 
+                font: bold 8pt 'Poppins'; 
+                border: none;
+            }
+            QPushButton:hover { 
+                background-color: #c82333; 
+            }
+        """)
+        unselect_btn.clicked.connect(lambda: self._unselectSlot(row, col))
+        layout.addWidget(unselect_btn)
+        
         self.weeklyGridEdit.setCellWidget(row, col, container)
+        
+        # Mark as selected
+        self.selected_slots[(row, col)] = True
+        
+        # Enable buttons
+        self._updateButtonStates()
+
+    def _unselectSlot(self, row, col):
+        """Remove the selected slot and restore the plus button"""
+        # Remove from selected slots
+        if (row, col) in self.selected_slots:
+            del self.selected_slots[(row, col)]
+        
+        # Restore the plus button
+        self._addPlusCell(row, col)
+        
+        # Update button states
+        self._updateButtonStates()
+
+    def _unselectAllSlots(self):
+        """Unselect all selected slots"""
+        if not self.selected_slots:
+            return
+            
+        # Show confirmation dialog
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle("Unselect All Slots")
+        dialog.setModal(True)
+        dialog.setFixedSize(350, 180)
+        dialog.setStyleSheet("QDialog { background-color: white; border-radius: 10px; }")
+        
+        layout = QtWidgets.QVBoxLayout(dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        title_label = QtWidgets.QLabel("Unselect All Slots?")
+        title_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        title_label.setStyleSheet("QLabel { color: #2b2b2b; font: 600 14pt 'Poppins'; }")
+        layout.addWidget(title_label)
+        
+        message_label = QtWidgets.QLabel(f"This will unselect all {len(self.selected_slots)} selected time slots.")
+        message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        message_label.setStyleSheet("QLabel { color: #666666; font: 11pt 'Poppins'; }")
+        message_label.setWordWrap(True)
+        layout.addWidget(message_label)
+        
+        layout.addStretch(1)
+        
+        button_layout = QtWidgets.QHBoxLayout()
+        cancel_btn = QtWidgets.QPushButton("Cancel")
+        cancel_btn.setFixedHeight(35)
+        cancel_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #6c757d; 
+                color: white; 
+                border-radius: 6px; 
+                font: 600 11pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #5a6268; 
+            }
+        """)
+        cancel_btn.clicked.connect(dialog.reject)
+        
+        confirm_btn = QtWidgets.QPushButton("Unselect All")
+        confirm_btn.setFixedHeight(35)
+        confirm_btn.setStyleSheet("""
+            QPushButton { 
+                background-color: #dc3545; 
+                color: white; 
+                border-radius: 6px; 
+                font: 600 11pt 'Poppins'; 
+            }
+            QPushButton:hover { 
+                background-color: #c82333; 
+            }
+        """)
+        confirm_btn.clicked.connect(dialog.accept)
+        
+        button_layout.addWidget(cancel_btn)
+        button_layout.addStretch(1)
+        button_layout.addWidget(confirm_btn)
+        layout.addLayout(button_layout)
+        
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            # Unselect all slots
+            for (row, col) in list(self.selected_slots.keys()):
+                self._unselectSlot(row, col)
+
+    def _cancelChanges(self):
+        """Cancel all changes and go back"""
+        if self.selected_slots:
+            # Show confirmation dialog if there are unsaved changes
+            dialog = QtWidgets.QDialog(self)
+            dialog.setWindowTitle("Cancel Changes")
+            dialog.setModal(True)
+            dialog.setFixedSize(350, 180)
+            dialog.setStyleSheet("QDialog { background-color: white; border-radius: 10px; }")
+            
+            layout = QtWidgets.QVBoxLayout(dialog)
+            layout.setContentsMargins(20, 20, 20, 20)
+            layout.setSpacing(15)
+            
+            title_label = QtWidgets.QLabel("Cancel Changes?")
+            title_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            title_label.setStyleSheet("QLabel { color: #2b2b2b; font: 600 14pt 'Poppins'; }")
+            layout.addWidget(title_label)
+            
+            message_label = QtWidgets.QLabel(f"You have {len(self.selected_slots)} unsaved changes. Are you sure you want to cancel?")
+            message_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            message_label.setStyleSheet("QLabel { color: #666666; font: 11pt 'Poppins'; }")
+            message_label.setWordWrap(True)
+            layout.addWidget(message_label)
+            
+            layout.addStretch(1)
+            
+            button_layout = QtWidgets.QHBoxLayout()
+            no_btn = QtWidgets.QPushButton("No")
+            no_btn.setFixedHeight(35)
+            no_btn.setStyleSheet("""
+                QPushButton { 
+                    background-color: #6c757d; 
+                    color: white; 
+                    border-radius: 6px; 
+                    font: 600 11pt 'Poppins'; 
+                }
+                QPushButton:hover { 
+                    background-color: #5a6268; 
+                }
+            """)
+            no_btn.clicked.connect(dialog.reject)
+            
+            yes_btn = QtWidgets.QPushButton("Yes, Cancel")
+            yes_btn.setFixedHeight(35)
+            yes_btn.setStyleSheet("""
+                QPushButton { 
+                    background-color: #dc3545; 
+                    color: white; 
+                    border-radius: 6px; 
+                    font: 600 11pt 'Poppins'; 
+                }
+                QPushButton:hover { 
+                    background-color: #c82333; 
+                }
+            """)
+            yes_btn.clicked.connect(dialog.accept)
+            
+            button_layout.addWidget(no_btn)
+            button_layout.addStretch(1)
+            button_layout.addWidget(yes_btn)
+            layout.addLayout(button_layout)
+            
+            if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                self.back.emit()
+        else:
+            # No changes, just go back
+            self.back.emit()
+
+    def _updateButtonStates(self):
+        """Update the state of buttons based on selected slots"""
+        has_selections = len(self.selected_slots) > 0
+        self.unselectButton.setEnabled(has_selections)
+        self.createButton.setEnabled(has_selections)
 
     def _createSchedule(self):
         # Create time map for 12-hour to 24-hour conversion
@@ -346,51 +592,49 @@ class FacultyEditSchedulePage_ui(QWidget):
         time_slots = []
         
         # Find all available slots
-        for row in range(self.weeklyGridEdit.rowCount()):
-            for col in range(1, self.weeklyGridEdit.columnCount()):
-                cell_widget = self.weeklyGridEdit.cellWidget(row, col)
-                if cell_widget:
-                    # Check if this cell contains an available slot (has yellow background)
-                    child_widgets = cell_widget.findChildren(QtWidgets.QWidget)
-                    for child in child_widgets:
-                        if "background: #ffc000" in child.styleSheet():
-                            time_12h = time_map.get(row)
-                            day_name = day_map.get(col)
-                            
-                            if time_12h and day_name:
-                                # Convert 12-hour time to 24-hour format
-                                time_part, period = time_12h.split()
-                                hour_12, minute = map(int, time_part.split(':'))
-                                
-                                # Convert to 24-hour format
-                                if period == "PM" and hour_12 != 12:
-                                    hour_24 = hour_12 + 12
-                                elif period == "AM" and hour_12 == 12:
-                                    hour_24 = 0
-                                else:
-                                    hour_24 = hour_12
-                                
-                                start_time = f"{hour_24:02d}:{minute:02d}"
-                                
-                                # Calculate end time (30 minutes later)
-                                end_minute = minute + 30
-                                end_hour = hour_24
-                                if end_minute >= 60:
-                                    end_hour += 1
-                                    end_minute -= 60
-                                end_time = f"{end_hour:02d}:{end_minute:02d}"
-                                
-                                time_slots.append({
-                                    "start": start_time,
-                                    "end": end_time,
-                                    "day": day_name
-                                })
+        for (row, col) in self.selected_slots.keys():
+            time_12h = time_map.get(row)
+            day_name = day_map.get(col)
+            
+            if time_12h and day_name:
+                # Convert 12-hour time to 24-hour format
+                time_part, period = time_12h.split()
+                hour_12, minute = map(int, time_part.split(':'))
+                
+                # Convert to 24-hour format
+                if period == "PM" and hour_12 != 12:
+                    hour_24 = hour_12 + 12
+                elif period == "AM" and hour_12 == 12:
+                    hour_24 = 0
+                else:
+                    hour_24 = hour_12
+                
+                start_time = f"{hour_24:02d}:{minute:02d}"
+                
+                # Calculate end time (30 minutes later)
+                end_minute = minute + 30
+                end_hour = hour_24
+                if end_minute >= 60:
+                    end_hour += 1
+                    end_minute -= 60
+                end_time = f"{end_hour:02d}:{end_minute:02d}"
+                
+                time_slots.append({
+                    "start": start_time,
+                    "end": end_time,
+                    "day": day_name
+                })
         
         if time_slots:
             try:
                 result = self.crud.plot_schedule(self.faculty_id, time_slots)
                 if result:
                     self._showScheduleUpdatedDialog("Schedule created successfully!")
+                    # Clear selections after successful creation
+                    self.selected_slots.clear()
+                    self._updateButtonStates()
+                    # Reload the grid to show existing schedule
+                    self._populateEditWeeklyGrid()
                 else:
                     self._showScheduleUpdatedDialog("Failed to create schedule.", is_error=True)
             except Exception as e:
@@ -404,6 +648,10 @@ class FacultyEditSchedulePage_ui(QWidget):
             for col in range(1, self.weeklyGridEdit.columnCount()):
                 self.weeklyGridEdit.removeCellWidget(row, col)
                 self._addPlusCell(row, col)
+        
+        # Clear selected slots
+        self.selected_slots.clear()
+        self._updateButtonStates()
         
         # Load existing schedule
         block = self.crud.get_active_block(self.faculty_id)
@@ -505,5 +753,6 @@ class FacultyEditSchedulePage_ui(QWidget):
     def retranslateUi(self):
         self.RequestPage.setText("Edit Schedule")
         self.label_93.setText("Set Available Slots")
-        self.cancelButton.setText("<-Back")
+        self.unselectButton.setText("Unselect All")
+        self.cancelButton.setText("Cancel")
         self.createButton.setText("Create")

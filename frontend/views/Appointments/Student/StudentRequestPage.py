@@ -362,16 +362,28 @@ class StudentRequestPage_ui(QWidget):
 
         self.backbutton = QtWidgets.QPushButton("<- Back")
         self.backbutton.clicked.connect(self._handleBackButton)
+        self.backbutton.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #084924, stop:1 #0a5a2f);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font: 600 11pt 'Poppins';
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0a5a2f, stop:1 #0c6b3a);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #06381b, stop:1 #084924);
+            }
+        """)
+        self.backbutton.setFixedSize(100, 40)
         header_layout.addWidget(self.backbutton)
         
-        self.backButton = QtWidgets.QLabel()
-        self.backButton.setFixedSize(40, 40)
-        self.backButton.setText("")
-        self.backButton.setPixmap(QtGui.QPixmap(":/assets/back_button.png"))
-        self.backButton.setScaledContents(True)
-        self.backButton.setObjectName("backButton")
-        
-        header_layout.addWidget(self.backButton)
         
         reschedule_layout.addWidget(header_widget)
         

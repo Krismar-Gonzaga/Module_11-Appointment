@@ -79,15 +79,35 @@ class StudentEditSchedulePage_ui(QWidget):
         header_layout.addWidget(self.saveButton)
 
         self.backbutton = QtWidgets.QPushButton("<- Back")
+        self.backbutton.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #084924, stop:1 #0a5a2f);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font: 600 11pt 'Poppins';
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0a5a2f, stop:1 #0c6b3a);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #06381b, stop:1 #084924);
+            }
+        """)
+        self.backbutton.setFixedSize(100, 40)
         self.backbutton.clicked.connect(self.back)
         header_layout.addWidget(self.backbutton)
 
-        self.backButton_3 = QtWidgets.QLabel()
-        self.backButton_3.setFixedSize(40, 40)
-        self.backButton_3.setPixmap(QtGui.QPixmap(":/assets/back_button.png"))
-        self.backButton_3.setScaledContents(True)
+        # self.backButton_3 = QtWidgets.QLabel()
+        # self.backButton_3.setFixedSize(40, 40)
+        # self.backButton_3.setPixmap(QtGui.QPixmap(":/assets/back_button.png"))
+        # self.backButton_3.setScaledContents(True)
+        # header_layout.addWidget(self.backButton_3)
         
-        header_layout.addWidget(self.backButton_3)
         edit_layout.addWidget(header_widget)
         
         # White container with rounded corners

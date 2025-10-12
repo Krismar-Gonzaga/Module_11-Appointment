@@ -134,7 +134,26 @@ class StudentBrowseFaculty_ui(QWidget):
         header_layout.addWidget(self.refreshButton)
 
         self.backbutton = QtWidgets.QPushButton("<- Back")
-        self.backbutton.setIcon(QtGui.QIcon(":/assets/images/back_button.png"))
+        self.backbutton.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #084924, stop:1 #0a5a2f);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font: 600 11pt 'Poppins';
+                padding: 8px 12px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #0a5a2f, stop:1 #0c6b3a);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #06381b, stop:1 #084924);
+            }
+        """)
+        self.backbutton.setFixedSize(100, 40)
         self.backbutton.clicked.connect(self.back)
         header_layout.addWidget(self.backbutton)
         
