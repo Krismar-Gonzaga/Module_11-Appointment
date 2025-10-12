@@ -757,7 +757,7 @@ class StudentRequestPage_ui(QWidget):
         dialog = QtWidgets.QDialog()
         dialog.setWindowTitle("Appointment Request")
         dialog.setModal(True)
-        dialog.setFixedSize(550, 750)  # Increased height to accommodate document upload
+        dialog.setFixedSize(550, 700)  # Increased height to accommodate document upload
         dialog.setStyleSheet("""
             QDialog {
                 background-color: white;

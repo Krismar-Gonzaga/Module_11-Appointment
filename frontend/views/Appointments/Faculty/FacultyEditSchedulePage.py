@@ -157,7 +157,7 @@ class FacultyEditSchedulePage_ui(QWidget):
             QTableWidget { background: white; font: 10pt 'Poppins'; border: none; }
             QHeaderView::section { background-color: #0a5a2f; color: white; border: 0; padding: 12px 8px; font: 600 11pt 'Poppins'; }
         """)
-        headers = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        headers = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         for i, h in enumerate(headers):
             self.weeklyGridEdit.setHorizontalHeaderItem(i, QtWidgets.QTableWidgetItem(h))
 
@@ -341,8 +341,8 @@ class FacultyEditSchedulePage_ui(QWidget):
                 time_12h = f"{hour_12}:{minute:02d} {period}"
                 time_map[index] = time_12h
                 index += 1
-
-        day_map = {1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday"}
+       
+        day_map = {1: "Sunday", 2: "Monday", 3: "Tuesday", 4: "Wednesday", 5: "Thursday", 6: "Friday", 7: "Saturday"}
         time_slots = []
         
         # Find all available slots
@@ -409,7 +409,7 @@ class FacultyEditSchedulePage_ui(QWidget):
         block = self.crud.get_active_block(self.faculty_id)
         if "error" not in block:
             entries = self.crud.get_block_entries(block["id"])
-            day_map = {"Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7}
+            day_map = {"Sunday": 1, "Monday": 2, "Tuesday": 3, "Wednesday": 4, "Thursday": 5, "Friday": 6, "Saturday": 7}
             
             # Create time map for conversion
             time_map = {}

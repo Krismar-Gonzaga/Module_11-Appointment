@@ -172,7 +172,7 @@ class AppointmentSchedulerPage_ui(QWidget):
 
         self.weeklyGrid = QtWidgets.QTableWidget()
         self.weeklyGrid.setColumnCount(8)
-        self.weeklyGrid.setRowCount(25)  # 12:00 AM to 12:00 PM with 30-min increments
+        self.weeklyGrid.setRowCount(48)  # 12:00 AM to 12:00 PM with 30-min increments
         self.weeklyGrid.setShowGrid(True)
         self.weeklyGrid.verticalHeader().setVisible(True)
         self.weeklyGrid.horizontalHeader().setVisible(True)
@@ -183,7 +183,7 @@ class AppointmentSchedulerPage_ui(QWidget):
             QTableWidget::item { padding: 5px; border: 1px solid #e0e0e0; }
             QHeaderView::section { background-color: #0a5a2f; color: white; border: 0; padding: 10px; font: 600 11pt 'Poppins'; }
         """)
-        headers = ["Time", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        headers = ["Time", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
         for i, h in enumerate(headers):
             self.weeklyGrid.setHorizontalHeaderItem(i, QtWidgets.QTableWidgetItem(h))
 
@@ -194,7 +194,7 @@ class AppointmentSchedulerPage_ui(QWidget):
             header.setSectionResizeMode(c, QtWidgets.QHeaderView.ResizeMode.Stretch)
 
         times = []
-        for hour in range(0, 13):  # 12:00 AM to 12:00 PM
+        for hour in range(0, 24):  # 12:00 AM to 12:00 PM
             times.append(f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}")
             times.append(f"{hour % 12 or 12}:30 {'AM' if hour < 12 else 'PM'}")
         for r, t in enumerate(times):
@@ -207,7 +207,7 @@ class AppointmentSchedulerPage_ui(QWidget):
                 w = QtWidgets.QWidget()
                 w.setStyleSheet("QWidget { background: white; }")
                 self.weeklyGrid.setCellWidget(r, c, w)
-
+        print(f"Test: {times}")
         grid_layout.addWidget(self.weeklyGrid, 1)
         parent_layout.addWidget(grid_container, 1)
         self._populateWeeklySchedule()
@@ -247,15 +247,17 @@ class AppointmentSchedulerPage_ui(QWidget):
         logging.debug(f"Block entries: {entries}")
         appointments = self.crud.get_faculty_appointments(self.faculty_id)
         logging.debug(f"Faculty appointments: {appointments}")
-        day_map = {"Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6, "Sunday": 7}
+        day_map = {"Sunday": 1, "Monday": 2, "Tuesday": 3, "Wednesday": 4, "Thursday": 5, "Friday": 6, "Saturday": 7}
         
         # Create time map for 12-hour format
         time_map = {}
-        for i, (h, m) in enumerate([(h, m) for h in range(0, 13) for m in [0, 30]]):
+        for i, (h, m) in enumerate([(h, m) for h in range(0, 24) for m in [0, 30]]):
             period = "AM" if h < 12 else "PM"
             hour = h % 12 if h != 0 else 12
             time_str = f"{hour}:{m:02d} {period}"
             time_map[time_str] = i
+        
+        print(f"Test:  {time_map}")
 
         # Get the selected week (Monday to Sunday based on dateEdit)
         selected_date = self.dateEdit.date()

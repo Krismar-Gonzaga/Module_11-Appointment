@@ -1,10 +1,5 @@
 [
-  {
-    "id": 1,
-    "name": "Dr. Smith",
-    "email": "smith@university.edu",
-    "department": "Computer Science"
-  },
+  
   {
     "id": 2,
     "name": "Prof. Johnson",
@@ -62,7 +57,7 @@
   {
     "name": "Kim",
     "email": "Kim@school.edu",
-    "department": "Sample Department",
-    "id": 11
+    "department": "CISC",
+    "id": 1
   }
 ]

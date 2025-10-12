@@ -727,47 +727,143 @@ class AppointmentPage_ui(QWidget):
         self.go_to_AppointmentReschedulePage.emit()
 
     def _openApproveDialog(self, row_index, appointment_id):
-        """Open dialog to approve appointment."""
+        """Open dialog to approve appointment with location update feature."""
+        # Get appointment data first
+        appointment_data = None
+        for row in self.rows:
+            if row[5] == appointment_id:  # appointment_id is at index 5
+                appointment_data = row
+                break
+        
+        if not appointment_data:
+            QMessageBox.warning(self, "Error", "Appointment data not found")
+            return
+
         dlg = QtWidgets.QDialog(self)
-        dlg.setWindowTitle("Confirm Approval")
+        dlg.setWindowTitle("Confirm Acceptance")
         dlg.setModal(True)
-        dlg.setFixedSize(400, 200)
+        dlg.setFixedSize(450, 400)  # Increased size for location fields
+        dlg.setStyleSheet("background-color: white;")
         
         layout = QtWidgets.QVBoxLayout(dlg)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(20)
 
-        title = QtWidgets.QLabel("Are you sure you want to approve this appointment?")
+        # Title
+        title = QtWidgets.QLabel("Are you sure you want to accept this appointment?")
         title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("QLabel { color: #2b2b2b; font: 600 12pt 'Poppins'; }")
+        title.setStyleSheet("QLabel { color: #2b2b2b; font: 600 12pt 'Poppins'; margin-bottom: 10px; }")
         layout.addWidget(title)
 
-        layout.addStretch(1)
-
-        btn_layout = QtWidgets.QHBoxLayout()
-        btn_cancel = QtWidgets.QPushButton("Cancel")
-        btn_approve = QtWidgets.QPushButton("Approve")
+        # Meeting type section
+        meeting_type_layout = QtWidgets.QVBoxLayout()
+        meeting_type_layout.setSpacing(8)
         
-        btn_cancel.setStyleSheet("""
-            QPushButton {
-                background: #e0e0e0;
+        meeting_type_label = QtWidgets.QLabel("Meeting type:")
+        meeting_type_label.setStyleSheet("QLabel { color: #666666; font: 10pt 'Poppins'; }")
+        meeting_type_layout.addWidget(meeting_type_label)
+        
+        # Meeting type options with radio buttons
+        meeting_type_group = QtWidgets.QButtonGroup(dlg)
+        
+        online_option_widget = QtWidgets.QWidget()
+        online_layout = QtWidgets.QHBoxLayout(online_option_widget)
+        online_layout.setContentsMargins(8, 0, 0, 0)
+        online_radio = QtWidgets.QRadioButton("Online")
+        online_radio.setStyleSheet("QRadioButton { color: #2b2b2b; font: 10pt 'Poppins'; }")
+        online_layout.addWidget(online_radio)
+        online_layout.addStretch(1)
+        meeting_type_group.addButton(online_radio)
+        
+        in_person_option_widget = QtWidgets.QWidget()
+        in_person_layout = QtWidgets.QHBoxLayout(in_person_option_widget)
+        in_person_layout.setContentsMargins(8, 0, 0, 0)
+        in_person_radio = QtWidgets.QRadioButton("In person")
+        in_person_radio.setStyleSheet("QRadioButton { color: #2b2b2b; font: 10pt 'Poppins'; }")
+        in_person_layout.addWidget(in_person_radio)
+        in_person_layout.addStretch(1)
+        meeting_type_group.addButton(in_person_radio)
+        
+        # Set default based on existing data if available
+        current_address = appointment_data[8] if len(appointment_data) > 8 else ""
+        if current_address and ("online" in current_address.lower() or "http" in current_address.lower()):
+            online_radio.setChecked(True)
+        else:
+            in_person_radio.setChecked(True)
+        
+        meeting_type_layout.addWidget(online_option_widget)
+        meeting_type_layout.addWidget(in_person_option_widget)
+        layout.addLayout(meeting_type_layout)
+
+        # Location input section
+        location_layout = QtWidgets.QVBoxLayout()
+        location_layout.setSpacing(8)
+        
+        location_label = QtWidgets.QLabel("Meeting Location / Link:")
+        location_label.setStyleSheet("QLabel { color: #666666; font: 10pt 'Poppins'; }")
+        location_layout.addWidget(location_label)
+        
+        # Location input field
+        self.location_input = QtWidgets.QLineEdit()
+        self.location_input.setPlaceholderText("Enter meeting location or online meeting link...")
+        self.location_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #e0e0e0;
                 border-radius: 6px;
-                padding: 8px 20px;
+                padding: 10px 12px;
                 font: 10pt 'Poppins';
-                color: #2b2b2b;
+                background: #fafafa;
             }
-            QPushButton:hover {
-                background: #d0d0d0;
+            QLineEdit:focus {
+                border: 1px solid #27AE60;
+                background: white;
             }
         """)
         
-        btn_approve.setStyleSheet("""
+        # Set current location if available
+        if current_address:
+            self.location_input.setText(current_address)
+        
+        location_layout.addWidget(self.location_input)
+        layout.addLayout(location_layout)
+
+        # Online meeting link preview (if online is selected)
+        self.link_preview_layout = QtWidgets.QVBoxLayout()
+        self.link_preview_layout.setSpacing(8)
+
+        layout.addStretch(1)
+
+        # Buttons layout
+        btn_layout = QtWidgets.QHBoxLayout()
+        btn_cancel = QtWidgets.QPushButton("Cancel")
+        btn_accept = QtWidgets.QPushButton("Accept")
+        
+        # Button styles
+        btn_style = """
+            QPushButton {
+                border-radius: 6px;
+                padding: 10px 24px;
+                font: 10pt 'Poppins';
+                min-width: 80px;
+            }
+        """
+        
+        btn_cancel.setStyleSheet(btn_style + """
+            QPushButton {
+                background: #f5f5f5;
+                color: #2b2b2b;
+                border: 1px solid #e0e0e0;
+            }
+            QPushButton:hover {
+                background: #e8e8e8;
+            }
+        """)
+        
+        btn_accept.setStyleSheet(btn_style + """
             QPushButton {
                 background: #27AE60;
-                border-radius: 6px;
-                padding: 8px 20px;
-                font: 10pt 'Poppins';
                 color: white;
+                border: none;
             }
             QPushButton:hover {
                 background: #219653;
@@ -776,23 +872,35 @@ class AppointmentPage_ui(QWidget):
         
         btn_cancel.clicked.connect(dlg.reject)
         
-        def _approve_clicked():
+        def _accept_clicked():
             try:
-                result = self.crud.update_appointment(appointment_id, {"status": "approved"})
+                # Validate location input
+                location_text = self.location_input.text().strip()
+                if not location_text:
+                    QMessageBox.warning(dlg, "Warning", "Please enter a meeting location or link.")
+                    return
+                
+                # Prepare update data
+                update_data = {
+                    "status": "approved",
+                    "address": location_text
+                }
+                
+                result = self.crud.update_appointment(appointment_id, update_data)
                 if result:
                     self._refreshAppointments()
-                    QMessageBox.information(self, "Success", "Appointment approved successfully!")
+                    QMessageBox.information(self, "Success", "Appointment accepted successfully!")
                     dlg.accept()
                 else:
-                    QMessageBox.warning(self, "Error", "Failed to approve appointment.")
+                    QMessageBox.warning(self, "Error", "Failed to accept appointment.")
             except Exception as e:
-                QMessageBox.warning(self, "Error", f"Failed to approve appointment: {str(e)}")
+                QMessageBox.warning(self, "Error", f"Failed to accept appointment: {str(e)}")
         
-        btn_approve.clicked.connect(_approve_clicked)
+        btn_accept.clicked.connect(_accept_clicked)
         
         btn_layout.addWidget(btn_cancel)
         btn_layout.addStretch(1)
-        btn_layout.addWidget(btn_approve)
+        btn_layout.addWidget(btn_accept)
         layout.addLayout(btn_layout)
 
         dlg.exec()
