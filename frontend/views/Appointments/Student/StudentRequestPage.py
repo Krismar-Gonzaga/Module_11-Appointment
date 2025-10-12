@@ -148,22 +148,55 @@ class StudentRequestPage_ui(QWidget):
         except Exception as e:
             print(f"Error updating calendar: {e}")
 
+    def _check_student_has_appointment_for_slot(self, student_id, schedule_entry_id, selected_date):
+        """
+        Check if the student already has an appointment for this specific schedule entry and date.
+        Returns True if student already has a pending or approved appointment for this exact slot.
+        """
+        try:
+            # Get all appointments for this student
+            all_appointments = self.Appointment_crud.get_student_appointments(student_id)
+            
+            if not all_appointments:
+                return False
+            
+            # Check if any appointment matches the exact schedule entry, date, and is pending/approved
+            for appointment in all_appointments:
+                # Check if this appointment is for the same schedule entry and date
+                if (appointment.get('appointment_schedule_entry_id') == schedule_entry_id and 
+                    appointment.get('appointment_date') == selected_date and
+                    appointment.get('status') in ['pending', 'approved']):
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"Error checking student appointments: {e}")
+            return False
+
     def _loadTheEntries(self, day):
         """Load available entries for the selected day"""
         day_entries = []
-        unavailble_entry_index = []
-
+        unavailable_entry_index = []
+        student_id = self._get_current_student_id()
+        
+        # Get day entries for the selected day
         for i in range(len(self.block_entries)):
             entry = self.block_entries[i]
             if entry.get('day_of_week') == day:
                 day_entries.append(entry)
         
+        # Check which entries are unavailable (already booked by anyone)
         for i in range(len(day_entries)):
-            date_appointments = self.Appointment_crud.get_appointments_by_entry_and_date(day_entries[i].get('id'), self.selected_date)
+            date_appointments = self.Appointment_crud.get_appointments_by_entry_and_date(
+                day_entries[i].get('id'), 
+                self.selected_date
+            )
             if date_appointments:
-                unavailble_entry_index.append(i)
+                unavailable_entry_index.append(i)
         
         try: 
+            # Clear existing slot buttons
             for btn in self.slot_buttons:
                 btn.deleteLater()
             self.slot_buttons.clear()
@@ -173,8 +206,10 @@ class StudentRequestPage_ui(QWidget):
                 self.slots_container.deleteLater()
                 self.slots_container = None
                 self.slots_layout = None
-
+            
             if day_entries:
+                print(f"Found {len(day_entries)} entries for {day}")
+                
                 # Ensure slots_container and slots_layout exist
                 if not self.slots_container:
                     self.slots_container = QtWidgets.QWidget()
@@ -216,35 +251,85 @@ class StudentRequestPage_ui(QWidget):
                     entry = day_entries[i]
                     start_time = entry.get('start_time', '')
                     end_time = entry.get('end_time', '')
-                        
+                    
                     slot_text = f"{start_time} - {end_time}"
                     
-                    self.button_4.setEnabled(False)
+                    # Create button
                     btn = QtWidgets.QPushButton(slot_text)
                     btn.setFixedHeight(45)
                     btn.setCheckable(True)
                     btn.setProperty("schedule_entry_id", entry["id"])
                     btn.setProperty("start_time", start_time)
                     btn.setProperty("end_time", end_time)
-                    btn.setStyleSheet(self.slot_style(default=True))
-                    btn.clicked.connect(lambda checked, b=btn, e=entry: self.select_slot(b, e))
                     
-                    if (i in unavailble_entry_index):      
-                        print("U")
+                    # Check if this slot is unavailable (booked by anyone)
+                    if i in unavailable_entry_index:
                         btn.setEnabled(False)
+                        btn.setStyleSheet("""
+                            QPushButton {
+                                background-color: #bfbfbf;
+                                color: #6f6f6f;
+                                border: 2px solid #a0a0a0;
+                                border-radius: 8px;
+                                padding: 10px 20px;
+                                font: 600 11pt 'Poppins';
+                            }
+                        """)
+                        btn.setToolTip("This time slot is already booked")
+                    else:
+                        # Check if student already has an appointment for this exact slot
+                        has_existing_appointment = self._check_student_has_appointment_for_slot(
+                            student_id, 
+                            entry["id"], 
+                            self.selected_date
+                        )
+                        
+                        if has_existing_appointment:
+                            btn.setEnabled(False)
+                            btn.setStyleSheet("""
+                                QPushButton {
+                                    background-color: #ffeb3b;
+                                    color: #333333;
+                                    border: 2px solid #ffc107;
+                                    border-radius: 8px;
+                                    padding: 10px 20px;
+                                    font: 600 11pt 'Poppins';
+                                }
+                            """)
+                            btn.setToolTip("You already have a pending or approved appointment for this time slot")
+                        else:
+                            # Slot is available
+                            btn.setStyleSheet(self.slot_style(default=True))
+                            btn.clicked.connect(lambda checked, b=btn, e=entry: self.select_slot(b, e))
                     
                     self.slots_layout.addWidget(btn)
                     self.slot_buttons.append(btn)
                     
                 self.slots_layout.addStretch(1)
                     
-                if self.slot_buttons:
-                    self.slot_buttons[0].setChecked(True)
-                    self.slot_buttons[0].setStyleSheet(self.slot_style(selected=True))
+                # Enable the first available slot by default
+                available_buttons = [btn for btn in self.slot_buttons if btn.isEnabled()]
+                if available_buttons:
+                    available_buttons[0].setChecked(True)
+                    available_buttons[0].setStyleSheet(self.slot_style(selected=True))
                     self.selected_schedule_entry = day_entries[0]
+                    self.button_4.setEnabled(True)
                 else:
                     self.selected_schedule_entry = None
-                    self._showNoSlotsMessage()
+                    self.button_4.setEnabled(False)
+                    if self.slot_buttons:  # If there are slots but all are unavailable
+                        no_available_label = QtWidgets.QLabel("No available time slots for this date")
+                        no_available_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                        no_available_label.setStyleSheet("""
+                            QLabel {
+                                font: 12pt 'Poppins';
+                                color: #666666;
+                                background: #f8f9fa;
+                                border-radius: 8px;
+                                padding: 20px;
+                            }
+                        """)
+                        self.slots_layout.insertWidget(0, no_available_label)
             else:
                 self._showNoSlotsMessage()
                 
@@ -618,9 +703,15 @@ class StudentRequestPage_ui(QWidget):
 
     def select_slot(self, button, schedule_entry):
         """Handle slot selection"""
+        # Only allow selection of enabled buttons
+        if not button.isEnabled():
+            return
+            
         for btn in self.slot_buttons:
-            btn.setChecked(False)
-            btn.setStyleSheet(self.slot_style(default=True))
+            if btn.isEnabled():  # Only reset style for enabled buttons
+                btn.setChecked(False)
+                btn.setStyleSheet(self.slot_style(default=True))
+        
         button.setChecked(True)
         button.setStyleSheet(self.slot_style(selected=True))
         self.selected_schedule_entry = schedule_entry
@@ -641,6 +732,23 @@ class StudentRequestPage_ui(QWidget):
         if not self.selected_date:
             QMessageBox.warning(self, "Warning", "Please select a date.")
             return
+
+        # Double-check that student doesn't already have an appointment for this slot
+        student_id = self._get_current_student_id()
+        if student_id:
+            has_existing = self._check_student_has_appointment_for_slot(
+                student_id, 
+                self.selected_schedule_entry["id"], 
+                self.selected_date
+            )
+            if has_existing:
+                QMessageBox.warning(
+                    self, 
+                    "Already Booked", 
+                    "You already have a pending or approved appointment for this time slot. "
+                    "Please choose a different time."
+                )
+                return
 
         self._showAppointmentDetailsDialog()
 
@@ -1143,6 +1251,21 @@ class StudentRequestPage_ui(QWidget):
                 QtWidgets.QMessageBox.warning(dialog, "Error", "Student profile not found.")
                 return
             
+            # Final check to prevent double booking
+            has_existing = self._check_student_has_appointment_for_slot(
+                student_id, 
+                self.selected_schedule_entry["id"], 
+                self.selected_date
+            )
+            if has_existing:
+                QtWidgets.QMessageBox.warning(
+                    dialog,
+                    "Already Booked",
+                    "You already have a pending or approved appointment for this time slot. "
+                    "Please choose a different time."
+                )
+                return
+            
             # Handle file uploads and get file paths
             uploaded_file_paths = []
             if self.uploaded_files:
@@ -1172,7 +1295,7 @@ class StudentRequestPage_ui(QWidget):
                         )
                         return
             
-            # FIX: Store all file paths as comma-separated string in image_path
+            # Store all file paths as comma-separated string in image_path
             all_file_paths = ",".join(uploaded_file_paths) if uploaded_file_paths else ""
             
             result = self.Appointment_crud.create_appointment(
@@ -1181,7 +1304,7 @@ class StudentRequestPage_ui(QWidget):
                 details=reason_text,
                 address=location,
                 date_str=self.selected_date,
-                image_path=all_file_paths  # FIX: Store all files here, removed additional_files parameter
+                image_path=all_file_paths
             )
             
             if result:

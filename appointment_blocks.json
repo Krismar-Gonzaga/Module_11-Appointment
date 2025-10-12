@@ -1,67 +1,12 @@
 [
   {
-    "id": 1,
-    "faculty_id": 2,
-    "is_available": true
-  },
-  {
-    "id": 2,
-    "faculty_id": 3,
-    "is_available": true
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 3
-  },
-  {
     "faculty_id": 11,
     "is_available": true,
-    "id": 4
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 5
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 6
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 7
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 8
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 9
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 10
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 11
-  },
-  {
-    "faculty_id": 1,
-    "is_available": false,
-    "id": 12
+    "id": 1
   },
   {
     "faculty_id": 1,
     "is_available": true,
-    "id": 13
+    "id": 2
   }
 ]

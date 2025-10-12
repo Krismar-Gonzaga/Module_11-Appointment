@@ -1,121 +1,23 @@
 [
     {
-        "id": 1,
         "name": "Alice Santos",
         "email": "alice@student.edu",
         "course": "BSIT",
-        "year_level": 3
+        "year_level": 3,
+        "id": 1
     },
     {
-        "id": 2,
         "name": "Badong Lee",
         "email": "badong@student.edu",
         "course": "BSIT",
-        "year_level": 3
+        "year_level": 3,
+        "id": 2
     },
     {
         "id": 3,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 4,
-        "name": "Badong Lee",
-        "email": "badong@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 5,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 6,
-        "name": "Badong Lee",
-        "email": "badong@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 7,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 8,
-        "name": "Badong Lee",
-        "email": "badong@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 9,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 10,
-        "name": "Badong Lee",
-        "email": "badong@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 11,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 12,
-        "name": "Badong Lee",
-        "email": "badong@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 13,
-        "name": "John Doe",
+        "name": "Adolf",
         "email": "Adolf",
-        "course": "Computer Science",
-        "year_level": "3rd Year"
-    },
-    {
-        "id": 14,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 15,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 16,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
-    },
-    {
-        "id": 17,
-        "name": "Alice Santos",
-        "email": "alice@student.edu",
-        "course": "BSIT",
-        "year_level": 3
+        "course": "Unknown Course",
+        "year_level": "Unknown Year"
     }
 ]

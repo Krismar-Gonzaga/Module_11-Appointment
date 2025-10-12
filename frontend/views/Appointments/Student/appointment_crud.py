@@ -99,7 +99,7 @@ class appointment_crud:
     def get_block_entries(self, block_id):
         """List all time slot entries in a specific block."""
         return self.entries_db.read_by_field("schedule_block_entry_id", block_id)
-
+    
     # ===========================
     # APPOINTMENTS BY ENTRY AND DATE
     # ===========================
